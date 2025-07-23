@@ -44,9 +44,7 @@ dependencies {
 	implementation 'com.hierynomus:sshj:0.37.0'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 
-	implementation 'org.springframework.ai:spring-ai-anthropic-spring-boot-starter:1.0.0-M6'
-	implementation 'org.springframework.ai:spring-ai-mcp-client-spring-boot-starter:1.0.0-M6'
-
+	implementation 'org.springframework.ai:spring-ai-openai-spring-boot-starter:1.0.0-M6'
 }
 
 tasks.named('test') {
