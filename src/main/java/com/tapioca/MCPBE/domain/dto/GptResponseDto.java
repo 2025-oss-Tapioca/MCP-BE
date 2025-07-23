@@ -1,4 +1,4 @@
-package com.tapioca.MCPBE.util.gpt;
+package com.tapioca.MCPBE.domain.dto;
 
 import lombok.Getter;
 
