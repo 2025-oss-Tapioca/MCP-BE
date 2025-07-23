@@ -6,7 +6,7 @@ import org.springframework.http.HttpStatus;
 
 @Getter
 @RequiredArgsConstructor
-public enum ErrorCode {
+public enum     ErrorCode {
     /**
      * 400** Bad Request
      */
@@ -17,11 +17,8 @@ public enum ErrorCode {
     ARGUMENT_TYPE_MISMATCH("40004", HttpStatus.BAD_REQUEST, "Argument Type mismatch."),
     MISSING_REQUEST_PART("40005", HttpStatus.BAD_REQUEST, "Missing request part."),
     UNSUPPORTED_MEDIA_TYPE("40006", HttpStatus.BAD_REQUEST, "Unsupported Media Type."),
-    INVALID_REQUEST_HEAD("40007", HttpStatus.BAD_REQUEST, "Invalid request head provided."),
-    INVALID_OAUTH2_PROVIDER("40008", HttpStatus.BAD_REQUEST, "잘못된 OAuth2 제공자입니다."),
-    MISSING_REQUEST_IMAGES("40009", HttpStatus.BAD_REQUEST, "이미지를 찾을 수 없습니다."),
-    INVALID_REQUEST_IMAGES("40010", HttpStatus.BAD_REQUEST, "이미지 파일을 읽을 수 없습니다."),
-    NOT_ACESS_SCHEDULER("40011", HttpStatus.BAD_REQUEST,"스케줄러에 등록할 수 없습니다"),
+    INVALID_MAPPING_VALUE("40007", HttpStatus.BAD_REQUEST, "GPT매핑이 이루어지지 않았습니다"),
+
 
 
     /**
