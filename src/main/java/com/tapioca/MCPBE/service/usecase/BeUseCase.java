@@ -1,8 +1,7 @@
 package com.tapioca.MCPBE.service.usecase;
 
-import com.tapioca.MCPBE.domain.dto.be.BeRequestDto;
-import com.tapioca.MCPBE.domain.dto.gpt.GptResponseDto;
+import com.fasterxml.jackson.databind.JsonNode;
 
 public interface BeUseCase {
-    public void beRequest(BeRequestDto beRequestDto);
+    public Object beRequest(JsonNode beJson);
 }
