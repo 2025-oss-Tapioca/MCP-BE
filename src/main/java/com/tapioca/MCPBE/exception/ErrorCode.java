@@ -18,6 +18,7 @@ public enum     ErrorCode {
     MISSING_REQUEST_PART("40005", HttpStatus.BAD_REQUEST, "Missing request part."),
     UNSUPPORTED_MEDIA_TYPE("40006", HttpStatus.BAD_REQUEST, "Unsupported Media Type."),
     INVALID_MAPPING_VALUE("40007", HttpStatus.BAD_REQUEST, "GPT매핑이 이루어지지 않았습니다"),
+    FAILURE_SEND_VETEGA("40008", HttpStatus.BAD_REQUEST, "vetega 전송에 실패하셨습니다"),
 
 
 
@@ -62,6 +63,7 @@ public enum     ErrorCode {
      * 405** Method Not Allowed
      */
     METHOD_NOT_ALLOWED("40500", HttpStatus.METHOD_NOT_ALLOWED, "지원하지 않는 HTTP 메소드입니다."),
+    TYPE_NOT_ALLOWED("40501", HttpStatus.METHOD_NOT_ALLOWED, "지원하지 않는 요청 타입입니다."),
 
     /**
      * 409** Conflict
@@ -77,6 +79,7 @@ public enum     ErrorCode {
     SERVER_ERROR("50000", HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류입니다."),
     SMS_SEND_FAIL("50102", HttpStatus.INTERNAL_SERVER_ERROR, "메세지 전송 실패"),
     EXTERNAL_SERVER_ERROR("50101", HttpStatus.INTERNAL_SERVER_ERROR, "서버 외부 오류");
+
     private final String code;
     private final HttpStatus httpStatus;
     private final String message;
