@@ -2,7 +2,9 @@ package com.tapioca.MCPBE.service.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.tapioca.MCPBE.domain.dto.response.TrafficTestResponseDto;
-import com.tapioca.MCPBE.service.usecase.ApiSpecTestUseCase;
+import com.tapioca.MCPBE.service.usecase.GetJwtUseCase;
+import com.tapioca.MCPBE.service.usecase.TrafficTestUseCase;
+import com.tapioca.MCPBE.util.parser.TrafficTestParser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,21 +19,32 @@ import java.nio.file.Path;
 @Service
 @Transactional
 @RequiredArgsConstructor
-public class ApiSpecTestService implements ApiSpecTestUseCase {
+public class TrafficTestService implements TrafficTestUseCase {
+
+    private final GetJwtUseCase getJwtUseCase;
 
     @Override
     public TrafficTestResponseDto execute(JsonNode json) {
         String url = json.get("url").asText();
         int rate = json.get("rate").asInt();
         int duration = json.get("duration").asInt();
-        String auth = json.get("auth").asText();
+        String loginId = json.get("login_id").asText();
+        String password = json.get("password").asText();
+        String loginPath = json.get("login_path").asText();
+        String jwt;
+
+        if (loginPath == null){
+            jwt=null;
+        } else {
+            jwt= getJwtUseCase.getJwtFromLogin(loginId,password,loginPath);
+        }
 
         String vegetaPath = "C:\\Users\\정유현\\go\\bin\\vegeta.exe";
 
         try {
             // 1. 타겟 파일 생성
             Path targetFile = Files.createTempFile("vegeta-targets", ".txt");
-            String targetContent = String.format("GET %s%nAuthorization: %s", url, auth);
+            String targetContent = String.format("GET %s%nAuthorization: %s", url, jwt);
             Files.writeString(targetFile, targetContent, StandardCharsets.UTF_8);
 
             // 2. 전체 명령어 구성
