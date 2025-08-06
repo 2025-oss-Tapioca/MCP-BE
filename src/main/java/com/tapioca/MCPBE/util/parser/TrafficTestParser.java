@@ -1,4 +1,4 @@
-package com.tapioca.MCPBE.service.service;
+package com.tapioca.MCPBE.util.parser;
 
 import com.tapioca.MCPBE.domain.dto.response.TrafficTestResponseDto;
 import com.tapioca.MCPBE.domain.dto.response.TrafficTestResponseType.ByteDetail;
