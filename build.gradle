@@ -21,27 +21,34 @@ configurations {
 
 repositories {
 	mavenCentral()
+
+	// ✅ Spring AI 관련 최신 의존성은 milestone에 있으므로 필수
+	maven {
+		url = "https://repo.spring.io/milestone"
+	}
 }
 
 dependencies {
-	// ✅ 웹 및 REST API, JPA
+	// Spring Boot Starter
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 
-	// ✅ DB 드라이버
+	// Database
 	runtimeOnly 'org.postgresql:postgresql'
 
-	// ✅ Lombok (코드 축약용 어노테이션 지원)
+	// Lombok
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
 
-	// ✅ 테스트용
+	// Test
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
-	// ✅ SSH 라이브러리
-	implementation 'com.hierynomus:sshj:0.37.0'
-	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	// ✅ Spring AI MCP Starter (1.0.1 기준, milestone에서 가져옴)
+	implementation 'org.springframework.ai:spring-ai-starter-mcp-server-webmvc:1.0.1'
+
+	// ✅ Hibernate Validator
+	implementation 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
 }
 
 tasks.named('test') {
