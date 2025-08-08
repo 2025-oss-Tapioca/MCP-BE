@@ -17,7 +17,7 @@ public enum     ErrorCode {
     ARGUMENT_TYPE_MISMATCH("40004", HttpStatus.BAD_REQUEST, "Argument Type mismatch."),
     MISSING_REQUEST_PART("40005", HttpStatus.BAD_REQUEST, "Missing request part."),
     UNSUPPORTED_MEDIA_TYPE("40006", HttpStatus.BAD_REQUEST, "Unsupported Media Type."),
-    INVALID_MAPPING_VALUE("40007", HttpStatus.BAD_REQUEST, "GPT매핑이 이루어지지 않았습니다"),
+    INVALID_MAPPING_VALUE("40007", HttpStatus.BAD_REQUEST, "매핑이 이루어지지 않았습니다"),
     FAILURE_SEND_VETEGA("40008", HttpStatus.BAD_REQUEST, "vetega 전송에 실패하셨습니다"),
 
 
