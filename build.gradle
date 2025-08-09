@@ -22,7 +22,6 @@ configurations {
 repositories {
 	mavenCentral()
 
-	// ✅ Spring AI 관련 최신 의존성은 milestone에 있으므로 필수
 	maven {
 		url = "https://repo.spring.io/milestone"
 	}
@@ -46,11 +45,16 @@ dependencies {
 
 	// ✅ Spring AI MCP Starter (1.0.1 기준, milestone에서 가져옴)
 	implementation 'org.springframework.ai:spring-ai-starter-mcp-server-webmvc:1.0.1'
-
+	implementation 'io.modelcontextprotocol.sdk:mcp:0.10.0'
+	implementation 'io.modelcontextprotocol.sdk:mcp-spring-webmvc:0.10.0'
 	// ✅ Hibernate Validator
 	implementation 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
 }
 
 tasks.named('test') {
 	useJUnitPlatform()
+}
+
+tasks.withType(JavaCompile).configureEach {
+	options.compilerArgs += ['-parameters']
 }
