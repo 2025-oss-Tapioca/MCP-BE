@@ -23,25 +23,4 @@ public class McpSchemeController {
     public Map<String, Object> schema() {
         return mcpSchemaUseCase.buildSchema();
     }
-
-    @GetMapping("/sse")
-    public SseEmitter handleSse(HttpServletRequest request, HttpServletResponse response) {
-        HttpSession session = request.getSession(true);
-
-        Cookie cookie = new Cookie("JSESSIONID", session.getId());
-        cookie.setPath("/");
-        cookie.setHttpOnly(true);
-        response.addCookie(cookie);
-
-        SseEmitter emitter = new SseEmitter();
-        try {
-            emitter.send(SseEmitter.event()
-                    .name("endpoint")
-                    .data("/mcp/messages?sessionId=" + session.getId()));
-        } catch (IOException e) {
-            emitter.completeWithError(e);
-        }
-        return emitter;
-    }
-
 }
