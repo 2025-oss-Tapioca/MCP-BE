@@ -1,10 +1,7 @@
-package com.tapioca.MCPBE.service.service;
+package com.tapioca.MCPBE.service.service.trafficAndSpec;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.tapioca.MCPBE.domain.dto.response.TrafficTestResponseDto;
-import com.tapioca.MCPBE.service.usecase.GetJwtUseCase;
-import com.tapioca.MCPBE.service.usecase.TrafficTestUseCase;
-import com.tapioca.MCPBE.util.parser.TrafficTestParser;
+import com.tapioca.MCPBE.service.usecase.trafficAndSpec.VegetaUseCase;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,39 +16,32 @@ import java.nio.file.Path;
 @Service
 @Transactional
 @RequiredArgsConstructor
-public class TrafficTestService implements TrafficTestUseCase {
+public class VegetaService implements VegetaUseCase {
 
-    private final GetJwtUseCase getJwtUseCase;
+    private final String vegetaPath = "C:\\Users\\정유현\\go\\bin\\vegeta.exe";
 
     @Override
-    public TrafficTestResponseDto execute(JsonNode json) {
-        String url = json.get("url").asText();
-        int rate = json.get("rate").asInt();
-        int duration = json.get("duration").asInt();
-        String loginId = json.get("login_id").asText();
-        String password = json.get("password").asText();
-        String loginPath = json.get("login_path").asText();
-        String jwt;
+    public String makeTargetFile(String method, String url, String jwt, JsonNode apiDto) throws IOException {
+        Path targetFile = Files.createTempFile("vegeta-targets", ".txt");
 
-        if (loginPath == null){
-            jwt=null;
-        } else {
-            jwt= getJwtUseCase.getJwtFromLogin(loginId,password,loginPath);
-        }
+        String targetContent = String.format(
+                "%s %s%nAuthorization: Bearer %s%nContent-Type: application/json%n%n%s",
+                method.toUpperCase(),
+                url,
+                jwt,
+                apiDto.toString()
+        );
 
-        String vegetaPath = "C:\\Users\\정유현\\go\\bin\\vegeta.exe";
+        Files.writeString(targetFile, targetContent, StandardCharsets.UTF_8);
+        return targetFile.toAbsolutePath().toString();
+    }
 
+    @Override
+    public String runVegeta(String targetPath, int rate, int duration) {
         try {
-            // 1. 타겟 파일 생성
-            Path targetFile = Files.createTempFile("vegeta-targets", ".txt");
-            String targetContent = String.format("GET %s%nAuthorization: %s", url, jwt);
-            Files.writeString(targetFile, targetContent, StandardCharsets.UTF_8);
-
-            // 2. 전체 명령어 구성
             String cmd = String.format("\"%s\" attack -rate=%d -duration=%ds -targets \"%s\" | \"%s\" report",
-                    vegetaPath, rate, duration, targetFile.toAbsolutePath(), vegetaPath);
+                    vegetaPath, rate, duration, targetPath, vegetaPath);
 
-            // 3. ProcessBuilder 구성
             ProcessBuilder builder = new ProcessBuilder("cmd.exe", "/c", cmd);
             builder.redirectErrorStream(true);
 
@@ -75,13 +65,10 @@ public class TrafficTestService implements TrafficTestUseCase {
                 throw new RuntimeException("❌ Vegeta 실행 실패 - exit code: " + exitCode + "\n" + output);
             }
 
-            return TrafficTestParser.parse(output.toString());
-
+            return output.toString();
         } catch (IOException | InterruptedException e) {
             Thread.currentThread().interrupt(); // InterruptedException 발생 시 인터럽트 복구
             throw new RuntimeException("❌ Vegeta 실행 중 예외 발생", e);
         }
     }
-
-
 }
