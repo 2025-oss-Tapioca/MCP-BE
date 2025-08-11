@@ -1,6 +1,8 @@
 package com.tapioca.MCPBE.repository.impl;
 
 import com.tapioca.MCPBE.domain.entity.erd.ErdEntity;
+import com.tapioca.MCPBE.exception.CustomException;
+import com.tapioca.MCPBE.exception.ErrorCode;
 import com.tapioca.MCPBE.repository.jpa.ErdJpaRepository;
 import com.tapioca.MCPBE.repository.repo.ErdRepository;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +16,7 @@ public class ErdRepositoryImpl implements ErdRepository {
 
     @Override
     public ErdEntity findByTeamEntity_code(String teamCode) {
-        return erdJpaRepository.findByTeamEntity_code(teamCode);
+        return erdJpaRepository.findByTeamEntity_code(teamCode)
+                .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND_ERD));
     }
 }
