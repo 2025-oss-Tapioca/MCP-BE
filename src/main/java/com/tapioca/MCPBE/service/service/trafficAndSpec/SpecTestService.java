@@ -24,14 +24,17 @@ public class SpecTestService implements SpecTestUseCase {
             String output = vegetaCommonService.execute(method, url, loginPath, loginId
                     , password, rate, duration, jsonBody);
 
+            System.out.println("test output");
+            System.out.println(output);
+            System.out.println(mapper.writeValueAsString(output));
             JsonNode root = mapper.readTree(output);
-            JsonNode data = root.get("data").get("data");
+            //JsonNode data = root.get("data").get("data");
 
-            JsonNode latencies = data.path("latencies");
-            JsonNode resultDuration = data.path("duration");
-            double throughput = data.path("requests").path("throughput").asDouble();
-            String successRatio = data.path("successRatio").asText();
-            JsonNode statusCodes = data.path("statusCodes");
+            JsonNode latencies = root.path("latencies");
+            JsonNode resultDuration = root.path("duration");
+            double throughput = root.path("requests").path("throughput").asDouble();
+            String successRatio = root.path("successRatio").asText();
+            JsonNode statusCodes = root.path("statusCodes");
 
             return new SpecTestResultDto(latencies, resultDuration, throughput, successRatio, statusCodes);
         } catch (Exception e) {

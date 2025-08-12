@@ -20,7 +20,7 @@ public class VegetaCommonService implements com.tapioca.MCPBE.service.usecase.tr
     public String execute(String method, String url, String loginPath,String loginId,
                           String password, int rate, int duration, JsonNode jsonBody){
         String jwt = null;
-        if (loginId != null && password != null && loginPath != null) {
+        if (hasText(loginId) && hasText(password) && hasText(loginPath)) {
             jwt = getJwtUseCase.getJwtFromLogin(loginId, password, loginPath);
         }
         System.out.println(jwt);
@@ -31,7 +31,10 @@ public class VegetaCommonService implements com.tapioca.MCPBE.service.usecase.tr
             System.out.println(output);
             return output;
         } catch (Exception e) {
-            throw new CustomException(ErrorCode.INVALID_MAPPING_VALUE);
+            throw new RuntimeException("Load test 실행 실패: " + e.getMessage(), e);
+            //throw new CustomException(ErrorCode.INVALID_MAPPING_VALUE);
         }
     }
+
+    private boolean hasText(String s) { return s != null && !s.isBlank(); }
 }

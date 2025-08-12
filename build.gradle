@@ -44,9 +44,11 @@ dependencies {
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
 	// ✅ Spring AI MCP Starter (1.0.1 기준, milestone에서 가져옴)
+	//implementation "org.springframework.boot:spring-boot-starter-webflux"
+	//implementation 'org.springframework.ai:spring-ai-starter-mcp-server-webflux:1.0.1'
 	implementation 'org.springframework.ai:spring-ai-starter-mcp-server-webmvc:1.0.1'
-	implementation 'io.modelcontextprotocol.sdk:mcp:0.10.0'
-	implementation 'io.modelcontextprotocol.sdk:mcp-spring-webmvc:0.10.0'
+	//implementation 'io.modelcontextprotocol.sdk:mcp:0.10.0'
+	//implementation 'io.modelcontextprotocol.sdk:mcp-spring-webmvc:0.10.0'
 	// ✅ Hibernate Validator
 	implementation 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
 }
