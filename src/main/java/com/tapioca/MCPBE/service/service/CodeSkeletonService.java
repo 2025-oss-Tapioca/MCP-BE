@@ -20,16 +20,12 @@ public class CodeSkeletonService implements CodeSkeletonUseCase {
     private final ErdRepository erdRepository;
 
     @Override
-    public CodeSkeletonResultDto execute(JsonNode jsonNode) {
-
-        String teamCode = jsonNode.path("teamCode").asText();
-
-        if(teamCode.isEmpty()){
+    public CodeSkeletonResultDto execute(String teamCode) {
+        try{
+            ErdEntity teamErd = erdRepository.findByTeamEntity_code(teamCode);
+            return new CodeSkeletonResultDto(teamCode, teamErd);
+        } catch (Exception e) {
             throw new CustomException(ErrorCode.NOT_FOUND_ERD);
         }
-
-        ErdEntity teamErd = erdRepository.findByTeamEntity_code(teamCode);
-
-        return new CodeSkeletonResultDto(teamCode, teamErd);
     }
 }

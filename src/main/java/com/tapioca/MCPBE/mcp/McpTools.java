@@ -1,8 +1,10 @@
 package com.tapioca.MCPBE.mcp;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.tapioca.MCPBE.domain.dto.result.CodeSkeletonResultDto;
 import com.tapioca.MCPBE.domain.dto.result.SpecTestResultDto;
 import com.tapioca.MCPBE.domain.dto.result.TrafficTestResultDto;
+import com.tapioca.MCPBE.service.service.CodeSkeletonService;
 import com.tapioca.MCPBE.service.service.trafficAndSpec.SpecTestService;
 import com.tapioca.MCPBE.service.service.trafficAndSpec.TrafficTestService;
 import org.springframework.ai.tool.annotation.Tool;
@@ -16,6 +18,7 @@ public class McpTools {
 
     private final TrafficTestService trafficTestService;
     private final SpecTestService specTestService;
+    private final CodeSkeletonService codeSkeletonService;
 
     @Tool(
             name = "traffic_test",
@@ -49,5 +52,15 @@ public class McpTools {
             @ToolParam(description = "API 요청 시 함께 보낼 JSON 본문 데이터입니다") JsonNode jsonBody
     ) {
         return specTestService.execute(method, url, loginPath, loginId, password, rate, duration, jsonBody);
+    }
+
+    @Tool(
+            name = "codeSkeleton_test",
+            description = "코드 스캐폴딩에 필요한 TEAM ERD 정보를 가져옵니다."
+    )
+    public CodeSkeletonResultDto codeSkeletonTest(
+            @ToolParam(description = "팀 erd를 가져오는 데 필요한 teamCode입니다.") String teamCode
+    ) {
+        return codeSkeletonService.execute(teamCode);
     }
 }
