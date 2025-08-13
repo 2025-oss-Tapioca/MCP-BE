@@ -1,7 +1,5 @@
 package com.tapioca.MCPBE.service.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tapioca.MCPBE.domain.dto.result.CodeSkeletonResultDto;
 import com.tapioca.MCPBE.domain.entity.erd.ErdEntity;
 import com.tapioca.MCPBE.exception.CustomException;
@@ -20,16 +18,16 @@ public class CodeSkeletonService implements CodeSkeletonUseCase {
     private final ErdRepository erdRepository;
 
     @Override
-    public CodeSkeletonResultDto execute(JsonNode params) {
+    public CodeSkeletonResultDto execute(String teamCode) {
 
-        String teamCode = params.path("teamCode").asText();
+        try {
 
-        if (teamCode.isEmpty()){
+            ErdEntity teamErd = erdRepository.findByTeamCode(teamCode);
+
+            return new CodeSkeletonResultDto(teamCode, teamErd);
+
+        } catch (Exception e) {
             throw new CustomException(ErrorCode.NOT_FOUND_ERD);
         }
-
-        ErdEntity teamErd = erdRepository.findByTeamCode(teamCode);
-
-        return new CodeSkeletonResultDto(teamCode, teamErd);
     }
 }
