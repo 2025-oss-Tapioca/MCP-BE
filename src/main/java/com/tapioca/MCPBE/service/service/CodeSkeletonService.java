@@ -20,6 +20,10 @@ public class CodeSkeletonService implements CodeSkeletonUseCase {
     @Override
     public CodeSkeletonResultDto execute(String teamCode) {
 
+        if (teamCode == null || teamCode.isEmpty()) {
+            throw new CustomException(ErrorCode.NOT_FOUND_CODE);
+        }
+
         try {
 
             ErdEntity teamErd = erdRepository.findByTeamCode(teamCode);

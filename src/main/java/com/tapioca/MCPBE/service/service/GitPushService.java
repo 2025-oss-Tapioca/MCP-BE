@@ -20,6 +20,10 @@ public class GitPushService implements GitPushUseCase {
     @Override
     public GitPushResultDto execute(String teamCode) {
 
+        if (teamCode == null || teamCode.isEmpty()) {
+            throw new CustomException(ErrorCode.NOT_FOUND_CODE);
+        }
+
         try {
 
             GitHubEntity githubEntity = gitHubRepository.findByTeamCode(teamCode);
