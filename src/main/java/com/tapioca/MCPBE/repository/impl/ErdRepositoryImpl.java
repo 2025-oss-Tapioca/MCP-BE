@@ -15,7 +15,7 @@ public class ErdRepositoryImpl implements ErdRepository {
     private final ErdJpaRepository erdJpaRepository;
 
     @Override
-    public ErdEntity findByTeamEntity_code(String teamCode) {
+    public ErdEntity findByTeamCode(String teamCode) {
         return erdJpaRepository.findByTeamEntity_code(teamCode)
                 .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND_ERD));
     }
