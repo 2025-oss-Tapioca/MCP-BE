@@ -22,11 +22,11 @@ import java.util.concurrent.TimeUnit;
 @RequiredArgsConstructor
 public class VegetaService implements VegetaUseCase {
 
-    @Value("${loadtest.vegeta.bin:vegeta}") // PATH에 있으면 그대로 'vegeta' 사용
+    @Value("${loadtest.vegeta.bin:vegeta}")
     private String vegetaBin;
 
     private static final Set<String> METHODS_WITH_BODY =
-            Set.of("POST","PUT","PATCH"); // 필요시 OPTIONS 추가
+            Set.of("POST","PUT","PATCH");
 
     @Override
     public String makeTargetFile(String method, String url, String jwt, JsonNode body) throws IOException {
@@ -44,7 +44,6 @@ public class VegetaService implements VegetaUseCase {
             sb.append("Content-Type: application/json").append("\n\n");
             sb.append(body.toString()).append("\n");
         } else {
-            // 헤더 종료(빈 줄)만 추가
             sb.append("\n");
         }
 
@@ -58,15 +57,14 @@ public class VegetaService implements VegetaUseCase {
         try {
             Path outBin = Files.createTempFile("vegeta-", ".bin");
 
-            // ✅ stdout은 결과(bin) 파일, stderr는 따로 읽어서 에러 메시지 확인
             ProcessBuilder attackPb = new ProcessBuilder(
                     vegetaBin, "attack",
                     "-rate", String.valueOf(rate),
                     "-duration", durationSec + "s",
                     "-targets", targetPath
             );
-            attackPb.redirectOutput(outBin.toFile());         // stdout -> bin
-            attackPb.redirectErrorStream(false);              // stderr 분리
+            attackPb.redirectOutput(outBin.toFile());
+            attackPb.redirectErrorStream(false);
             Process attack = attackPb.start();
 
             String attackStderr = readAll(attack.getErrorStream());  // 🔎 에러 내용 캡처
@@ -76,7 +74,6 @@ public class VegetaService implements VegetaUseCase {
                 throw new RuntimeException("vegeta attack timeout");
             }
             if (attack.exitValue() != 0) {
-                // 🔎 targets 파일 내용도 같이 보여주면 금방 원인 찾음
                 String targetsPreview = Files.readString(Path.of(targetPath), StandardCharsets.UTF_8);
                 throw new RuntimeException(
                         "vegeta attack failed (exit=" + attack.exitValue() + ")\n" +
@@ -84,7 +81,7 @@ public class VegetaService implements VegetaUseCase {
                                 "targets:\n" + targetsPreview
                 );
             }
-            // 2) report -type=json → JSON 문자열 반환
+
             Process report = new ProcessBuilder(
                     vegetaBin, "report",
                     "-type", "json",
