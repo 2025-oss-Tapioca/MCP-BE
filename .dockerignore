@@ -1,7 +1,6 @@
--.gradle
--build
- out
- **/*.iml
- .git
- .gitignore
- node_modules
+.git
+.gitignore
+.gradle
+node_modules
+out
+**/*.iml
