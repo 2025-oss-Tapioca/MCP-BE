@@ -109,6 +109,7 @@ public class VegetaService implements VegetaUseCase {
             if (report.exitValue() != 0) {
                 throw new RuntimeException("vegeta report failed (exit=" + report.exitValue() + ")");
             }
+            System.out.println("vegeta report json = " + json);
             return json;
 
         } catch (IOException | InterruptedException e) {
@@ -128,6 +129,7 @@ public class VegetaService implements VegetaUseCase {
         if (!Files.isExecutable(p)) {
             throw new IllegalStateException("지정된 vegeta 실행 파일이 존재하지 않거나 실행 권한이 없습니다: " + vegetaBin);
         }
+        System.out.println("Path : "+ p);
         return p.toString();
     }
 }
