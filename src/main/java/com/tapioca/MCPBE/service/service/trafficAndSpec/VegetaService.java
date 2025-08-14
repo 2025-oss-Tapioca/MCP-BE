@@ -50,7 +50,6 @@ public class VegetaService implements VegetaUseCase {
     }
 
     public String runVegeta(String targetPath, int rate, int durationSec) {
-        System.out.println("runVegeta 실행");
         final String bin = resolveVegetaBin();
         try {
             Path outBin = Files.createTempFile("vegeta-", ".bin");
