@@ -25,6 +25,8 @@ public class VegetaCommonService implements VegetaCommonUseCase {
             jwt = getJwtUseCase.getJwtFromLogin(loginId, password, loginPath);
         }
 
+        System.out.println("JWT : " + jwt);
+
         try{
             String targetPath = vegetaUseCase.makeTargetFile(method,url,jwt,jsonBody);
             String output = vegetaUseCase.runVegeta(targetPath, rate, duration);
