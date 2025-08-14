@@ -8,14 +8,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -57,7 +54,7 @@ public class VegetaService implements VegetaUseCase {
         final String bin = resolveVegetaBin();
         try {
             Path outBin = Files.createTempFile("vegeta-", ".bin");
-
+            // 실제 생성되는 파일명 예: /tmp/vegeta-1234567890.bin (임시 디렉토리에 랜덤 숫자 포함)
 
             ProcessBuilder attackPb = new ProcessBuilder(
                     bin, "attack",
@@ -65,19 +62,10 @@ public class VegetaService implements VegetaUseCase {
                     "-duration", durationSec + "s",
                     "-targets", targetPath
             );
-            System.out.println("fileCapture before");
-
-            // stdout -> 파일, stderr -> 별도 캡처
             attackPb.redirectOutput(outBin.toFile());
             attackPb.redirectErrorStream(false);
-            System.out.println("fileCapture after");
 
-
-            System.out.println("attackPb before");
             Process attack = attackPb.start();
-            System.out.println("attackPb after");
-
-            System.out.println("stderr before");
 
             // stderr 비동기 수집
             StringBuilder errBuf = new StringBuilder();
@@ -90,18 +78,14 @@ public class VegetaService implements VegetaUseCase {
             });
             errGobbler.setDaemon(true);
             errGobbler.start();
-            System.out.println("stderr after");
-
 
             boolean finished = attack.waitFor(durationSec + 30L, TimeUnit.SECONDS);
-            System.out.println(finished+" === > fin");
             if (!finished) {
                 attack.destroyForcibly();
                 throw new RuntimeException("vegeta attack timeout");
             }
             try { errGobbler.join(1500); } catch (InterruptedException ignored) { Thread.currentThread().interrupt(); }
 
-            System.out.println("here 1");
             if (attack.exitValue() != 0) {
                 String targetsPreview = Files.readString(Path.of(targetPath), StandardCharsets.UTF_8);
                 throw new RuntimeException(
@@ -126,26 +110,16 @@ public class VegetaService implements VegetaUseCase {
             return json;
 
         } catch (IOException | InterruptedException e) {
-            e.printStackTrace(); // ← 전체 스택트레이스와 원인 출력
+            e.printStackTrace();
             if (e instanceof InterruptedException) Thread.currentThread().interrupt();
             throw new RuntimeException("Vegeta 실행 실패 - vegeta 경로 또는 실행 환경 확인", e);
         }
     }
 
     /**
-     * 지정된 vegetaBin 경로만 사용
+     * 경로 체크 없이 설정된 vegetaBin 그대로 사용
      */
     private String resolveVegetaBin() {
-        if (vegetaBin == null || vegetaBin.isBlank()) {
-            throw new IllegalStateException("vegeta 실행 파일 경로가 설정되지 않았습니다. application.yml에서 loadtest.vegeta.bin을 지정하세요.");
-        }
-        Path p = Path.of(vegetaBin.trim());
-        if (!Files.isExecutable(p)) {
-            throw new IllegalStateException("지정된 vegeta 실행 파일이 존재하지 않거나 실행 권한이 없습니다: " + vegetaBin);
-        }
-        System.out.println("Path : "+ p);
-        return p.toString();
+        return vegetaBin.trim();
     }
 }
-
-
