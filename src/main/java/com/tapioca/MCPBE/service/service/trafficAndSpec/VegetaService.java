@@ -1,8 +1,6 @@
 package com.tapioca.MCPBE.service.service.trafficAndSpec;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.tapioca.MCPBE.exception.CustomException;
-import com.tapioca.MCPBE.exception.ErrorCode;
 import com.tapioca.MCPBE.service.usecase.trafficAndSpec.VegetaUseCase;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -48,19 +46,16 @@ public class VegetaService implements VegetaUseCase {
             sb.append("\n");
         }
 
-        try{
-            Path target = Files.createTempFile("vegeta-targets", ".txt");
-            Files.writeString(target, sb.toString(), StandardCharsets.UTF_8);
-            return target.toAbsolutePath().toString();
-        } catch (Exception e){
-            throw new CustomException(ErrorCode.NOT_FOUND_BIDHISTORY);
-        }
+        Path target = Files.createTempFile("vegeta-targets", ".txt");
+        Files.writeString(target, sb.toString(), StandardCharsets.UTF_8);
+
+        return target.toAbsolutePath().toString();
     }
 
     public String runVegeta(String targetPath, int rate, int durationSec) {
+        System.out.println("runVegeta 실행");
         final String bin = resolveVegetaBin();
         try {
-            System.out.println("runVegeta 실행");
             Path outBin = Files.createTempFile("vegeta-", ".bin");
 
             ProcessBuilder attackPb = new ProcessBuilder(
