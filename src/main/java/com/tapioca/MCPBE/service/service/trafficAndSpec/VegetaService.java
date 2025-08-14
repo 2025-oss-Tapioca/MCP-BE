@@ -58,17 +58,26 @@ public class VegetaService implements VegetaUseCase {
         try {
             Path outBin = Files.createTempFile("vegeta-", ".bin");
 
+
             ProcessBuilder attackPb = new ProcessBuilder(
                     bin, "attack",
                     "-rate", String.valueOf(rate),
                     "-duration", durationSec + "s",
                     "-targets", targetPath
             );
+            System.out.println("fileCapture before");
+
             // stdout -> 파일, stderr -> 별도 캡처
             attackPb.redirectOutput(outBin.toFile());
             attackPb.redirectErrorStream(false);
+            System.out.println("fileCapture after");
 
+
+            System.out.println("attackPb before");
             Process attack = attackPb.start();
+            System.out.println("attackPb after");
+
+            System.out.println("stderr before");
 
             // stderr 비동기 수집
             StringBuilder errBuf = new StringBuilder();
@@ -81,14 +90,18 @@ public class VegetaService implements VegetaUseCase {
             });
             errGobbler.setDaemon(true);
             errGobbler.start();
+            System.out.println("stderr after");
+
 
             boolean finished = attack.waitFor(durationSec + 30L, TimeUnit.SECONDS);
+            System.out.println(finished+" === > fin");
             if (!finished) {
                 attack.destroyForcibly();
                 throw new RuntimeException("vegeta attack timeout");
             }
             try { errGobbler.join(1500); } catch (InterruptedException ignored) { Thread.currentThread().interrupt(); }
 
+            System.out.println("here 1");
             if (attack.exitValue() != 0) {
                 String targetsPreview = Files.readString(Path.of(targetPath), StandardCharsets.UTF_8);
                 throw new RuntimeException(
@@ -109,10 +122,11 @@ public class VegetaService implements VegetaUseCase {
             if (report.exitValue() != 0) {
                 throw new RuntimeException("vegeta report failed (exit=" + report.exitValue() + ")");
             }
-            System.out.println("vegeta report json = " + json);
+
             return json;
 
         } catch (IOException | InterruptedException e) {
+            e.printStackTrace(); // ← 전체 스택트레이스와 원인 출력
             if (e instanceof InterruptedException) Thread.currentThread().interrupt();
             throw new RuntimeException("Vegeta 실행 실패 - vegeta 경로 또는 실행 환경 확인", e);
         }
