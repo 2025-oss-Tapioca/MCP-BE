@@ -3,72 +3,110 @@ package com.tapioca.MCPBE.service.service.trafficAndSpec;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.tapioca.MCPBE.service.usecase.trafficAndSpec.VegetaUseCase;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @Transactional
 @RequiredArgsConstructor
 public class VegetaService implements VegetaUseCase {
 
-    private final String vegetaPath = "C:\\Users\\정유현\\go\\bin\\vegeta.exe";
+    @Value("${loadtest.vegeta.bin:vegeta}")
+    private String vegetaBin;
+
+    private static final Set<String> METHODS_WITH_BODY =
+            Set.of("POST","PUT","PATCH");
 
     @Override
-    public String makeTargetFile(String method, String url, String jwt, JsonNode apiDto) throws IOException {
-        Path targetFile = Files.createTempFile("vegeta-targets", ".txt");
+    public String makeTargetFile(String method, String url, String jwt, JsonNode body) throws IOException {
+        final String m = (method == null ? "GET" : method.trim().toUpperCase());
+        final boolean hasJwt  = jwt != null && !jwt.isBlank();
+        final boolean hasBody = body != null && !body.isNull() && METHODS_WITH_BODY.contains(m);
 
-        String targetContent = String.format(
-                "%s %s%nAuthorization: Bearer %s%nContent-Type: application/json%n%n%s",
-                method.toUpperCase(),
-                url,
-                jwt,
-                apiDto.toString()
-        );
+        // 디버그: 실제 들어온 URL 확인
+        System.out.println("[vegeta] method="+m+" url="+url+" hasBody="+hasBody);
 
-        Files.writeString(targetFile, targetContent, StandardCharsets.UTF_8);
-        return targetFile.toAbsolutePath().toString();
+        StringBuilder sb = new StringBuilder();
+        sb.append(m).append(" ").append(url).append("\n");
+        if (hasJwt) sb.append("Authorization: Bearer ").append(jwt).append("\n");
+        if (hasBody) {
+            sb.append("Content-Type: application/json").append("\n\n");
+            sb.append(body.toString()).append("\n");
+        } else {
+            sb.append("\n");
+        }
+
+        Path target = Files.createTempFile("vegeta-targets", ".txt");
+        Files.writeString(target, sb.toString(), StandardCharsets.UTF_8);
+        return target.toAbsolutePath().toString();
     }
 
     @Override
-    public String runVegeta(String targetPath, int rate, int duration) {
+    public String runVegeta(String targetPath, int rate, int durationSec) {
         try {
-            String cmd = String.format("\"%s\" attack -rate=%d -duration=%ds -targets \"%s\" | \"%s\" report",
-                    vegetaPath, rate, duration, targetPath, vegetaPath);
+            Path outBin = Files.createTempFile("vegeta-", ".bin");
 
-            ProcessBuilder builder = new ProcessBuilder("cmd.exe", "/c", cmd);
-            builder.redirectErrorStream(true);
+            ProcessBuilder attackPb = new ProcessBuilder(
+                    vegetaBin, "attack",
+                    "-rate", String.valueOf(rate),
+                    "-duration", durationSec + "s",
+                    "-targets", targetPath
+            );
+            attackPb.redirectOutput(outBin.toFile());
+            attackPb.redirectErrorStream(false);
+            Process attack = attackPb.start();
 
-            // 4. 환경변수에 vegeta 경로 추가
-            builder.environment().merge("PATH", ";C:\\Users\\정유현\\go\\bin", (oldVal, newVal) -> oldVal + newVal);
-
-            // 5. 명령어 실행 및 출력 수집
-            Process process = builder.start();
-            StringBuilder output = new StringBuilder();
-
-            try (BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    output.append(line).append(System.lineSeparator());
-                }
+            String attackStderr = readAll(attack.getErrorStream());  // 🔎 에러 내용 캡처
+            boolean finished = attack.waitFor(durationSec + 30, TimeUnit.SECONDS);
+            if (!finished) {
+                attack.destroyForcibly();
+                throw new RuntimeException("vegeta attack timeout");
+            }
+            if (attack.exitValue() != 0) {
+                String targetsPreview = Files.readString(Path.of(targetPath), StandardCharsets.UTF_8);
+                throw new RuntimeException(
+                        "vegeta attack failed (exit=" + attack.exitValue() + ")\n" +
+                                "stderr:\n" + attackStderr + "\n" +
+                                "targets:\n" + targetsPreview
+                );
             }
 
-            int exitCode = process.waitFor();
-            if (exitCode != 0) {
-                throw new RuntimeException("❌ Vegeta 실행 실패 - exit code: " + exitCode + "\n" + output);
-            }
+            Process report = new ProcessBuilder(
+                    vegetaBin, "report",
+                    "-type", "json",
+                    outBin.toString()
+            ).redirectErrorStream(true).start();
 
-            return output.toString();
+            String json = new String(report.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            report.waitFor(15, java.util.concurrent.TimeUnit.SECONDS);
+            if (report.exitValue() != 0) {
+                throw new RuntimeException("vegeta report failed (exit=" + report.exitValue() + ")");
+            }
+            return json;
         } catch (IOException | InterruptedException e) {
-            Thread.currentThread().interrupt(); // InterruptedException 발생 시 인터럽트 복구
-            throw new RuntimeException("❌ Vegeta 실행 중 예외 발생", e);
+            if (e instanceof InterruptedException) Thread.currentThread().interrupt();
+            System.out.println(e.getMessage());
+            throw new RuntimeException("Vegeta 실행 실패 - vegeta 경로 또는 실행 환경 확인", e);
+        }
+    }
+
+    private static String readAll(InputStream is) throws IOException {
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+            StringBuilder sb = new StringBuilder();
+            String line; while ((line = br.readLine()) != null) sb.append(line).append('\n');
+            return sb.toString();
         }
     }
 }
+
