@@ -25,7 +25,7 @@ import java.util.concurrent.TimeUnit;
 public class VegetaService implements VegetaUseCase {
 
     @Value("${loadtest.vegeta.bin:}")
-    private String vegetaBin; // 비워두면 자동 탐색
+    private String vegetaBin; // application.yml에서 지정된 vegeta 경로 사용
 
     private static final Set<String> METHODS_WITH_BODY = Set.of("POST", "PUT", "PATCH");
 
@@ -70,7 +70,7 @@ public class VegetaService implements VegetaUseCase {
 
             Process attack = attackPb.start();
 
-            // stderr 비동기 수집 (timeout이 걸리도록)
+            // stderr 비동기 수집
             StringBuilder errBuf = new StringBuilder();
             Thread errGobbler = new Thread(() -> {
                 try (BufferedReader br = new BufferedReader(
@@ -87,7 +87,6 @@ public class VegetaService implements VegetaUseCase {
                 attack.destroyForcibly();
                 throw new RuntimeException("vegeta attack timeout");
             }
-            // 에러 스레드 마무리 여유
             try { errGobbler.join(1500); } catch (InterruptedException ignored) { Thread.currentThread().interrupt(); }
 
             if (attack.exitValue() != 0) {
@@ -118,45 +117,19 @@ public class VegetaService implements VegetaUseCase {
         }
     }
 
+    /**
+     * 지정된 vegetaBin 경로만 사용
+     */
     private String resolveVegetaBin() {
-        // 1) 설정으로 고정 경로가 온 경우
-        if (vegetaBin != null && !vegetaBin.isBlank()) {
-            Path p = Path.of(vegetaBin.trim());
-            if (Files.isExecutable(p)) return p.toString();
-            // 설정이 'vegeta' 같이 이름만 온 경우 PATH에서 찾기
-            if (!vegetaBin.contains(File.separator)) {
-                String fromPath = which("vegeta");
-                if (fromPath != null) return fromPath;
-            }
-            throw new IllegalStateException("지정된 vegeta 실행 파일을 찾을 수 없습니다: " + vegetaBin);
+        if (vegetaBin == null || vegetaBin.isBlank()) {
+            throw new IllegalStateException("vegeta 실행 파일 경로가 설정되지 않았습니다. application.yml에서 loadtest.vegeta.bin을 지정하세요.");
         }
-
-        // 2) PATH에서 찾기
-        String fromPath = which("vegeta");
-        if (fromPath != null) return fromPath;
-
-        // 3) 일반적 설치 위치 시도
-        List<String> candidates = List.of(
-                "/snap/bin/vegeta",
-                "/usr/local/bin/vegeta",
-                "/usr/bin/vegeta"
-        );
-        for (String c : candidates) {
-            Path p = Path.of(c);
-            if (Files.isExecutable(p)) return c;
+        Path p = Path.of(vegetaBin.trim());
+        if (!Files.isExecutable(p)) {
+            throw new IllegalStateException("지정된 vegeta 실행 파일이 존재하지 않거나 실행 권한이 없습니다: " + vegetaBin);
         }
-        throw new IllegalStateException("vegeta 실행 파일을 찾을 수 없습니다. application.yml에서 loadtest.vegeta.bin 경로를 지정하세요.");
-    }
-
-    private static String which(String cmd) {
-        try {
-            Process p = new ProcessBuilder("which", cmd)
-                    .redirectErrorStream(true).start();
-            String out = new String(p.getInputStream().readAllBytes(), StandardCharsets.UTF_8).trim();
-            p.waitFor(3, TimeUnit.SECONDS);
-            if (p.exitValue() == 0 && !out.isBlank()) return out.split("\\R")[0].trim();
-        } catch (Exception ignore) {}
-        return null;
+        return p.toString();
     }
 }
+
 
