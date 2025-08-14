@@ -54,6 +54,7 @@ public class VegetaService implements VegetaUseCase {
     public String runVegeta(String targetPath, int rate, int durationSec) {
         final String bin = resolveVegetaBin();
         try {
+            System.out.println("runVegeta 실행");
             Path outBin = Files.createTempFile("vegeta-", ".bin");
 
             ProcessBuilder attackPb = new ProcessBuilder(
