@@ -24,6 +24,7 @@ public class GetJwtService implements GetJwtUseCase {
         try {
             // 1. 요청 본문 구성
             String requestBody = String.format("{\"loginId\":\"%s\", \"password\":\"%s\"}", loginId, password);
+            System.out.println(requestBody);
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<String> entity = new HttpEntity<>(requestBody, headers);
@@ -35,6 +36,7 @@ public class GetJwtService implements GetJwtUseCase {
                     entity,
                     String.class
             );
+            System.out.println(response);
 
             // 3. 응답에서 accessToken 파싱
             if (response.getStatusCode().is2xxSuccessful()) {

@@ -1,7 +1,9 @@
 package com.tapioca.MCPBE.controller;
 
+import com.tapioca.MCPBE.domain.dto.request.LoginRequestDto;
 import com.tapioca.MCPBE.domain.dto.request.TestVegetaRequestDto;
 import com.tapioca.MCPBE.domain.dto.result.TrafficTestResultDto;
+import com.tapioca.MCPBE.service.usecase.GetJwtUseCase;
 import com.tapioca.MCPBE.service.usecase.trafficAndSpec.TrafficTestUseCase;
 import com.tapioca.MCPBE.service.usecase.trafficAndSpec.VegetaCommonUseCase;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class VegetaTestController {
     private final VegetaCommonUseCase vegetaCommonUseCase; //String
     private final TrafficTestUseCase trafficTestUseCase; //TrafficTestResultDto
+    private final GetJwtUseCase getJwtUseCase;
 
     @PostMapping("/son")
     public TrafficTestResultDto testVegeta(
@@ -33,5 +36,12 @@ public class VegetaTestController {
                 testVegetaRequestDto.duration(),
                 testVegetaRequestDto.jsonBody()
         );
+    }
+
+    @PostMapping("/login")
+    public String testLogin(
+            @RequestBody LoginRequestDto loginRequestDto
+    ){
+        return getJwtUseCase.getJwtFromLogin(loginRequestDto.loginId(),loginRequestDto.password(),loginRequestDto.loginPath());
     }
 }
