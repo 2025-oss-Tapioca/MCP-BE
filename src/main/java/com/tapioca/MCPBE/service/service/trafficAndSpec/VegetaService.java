@@ -36,7 +36,6 @@ public class VegetaService implements VegetaUseCase {
         System.out.println("=== makeTargetFile() 진입 ===");
         System.out.println("[입력값] method=" + method + ", url=" + url + ", jwt=" + jwt + ", body=" + body);
 
-        // 1. 기본값 + 공백 제거
         final String m = (method == null ? "GET" : method.trim().toUpperCase());
         url = (url == null ? "" : url.trim());
         final boolean hasJwt = jwt != null && !jwt.isBlank();
@@ -50,7 +49,6 @@ public class VegetaService implements VegetaUseCase {
         System.out.println("[vegeta] JWT 존재 여부=" + hasJwt);
         System.out.println("[vegeta] Body 존재 여부=" + hasBody);
 
-        // 2. vegeta 타겟 포맷
         StringBuilder sb = new StringBuilder();
         sb.append(m).append(" ").append(url).append("\n");
 
@@ -59,27 +57,23 @@ public class VegetaService implements VegetaUseCase {
         }
 
         if (hasBody) {
-            // 개행 2번 보장
             sb.append("Content-Type: application/json; charset=UTF-8").append("\n").append("\n");
             String jsonBodyString = body.isTextual() ? body.textValue() : objectMapper.writeValueAsString(body);
-            sb.append(jsonBodyString).append("\n"); // trim() 제거
+            sb.append(jsonBodyString).append("\n");
         } else {
-            sb.append("\n"); // Body 없을 경우 개행 한 번
+            sb.append("\n");
         }
 
-        // 3. BOM 제거 + 개행 통일
         String finalContent = sb.toString()
                 .replace("\uFEFF", "")
                 .replace("\r\n", "\n");
 
-        // 4. Docker/EC2 어디서든 확인 가능하게 고정 경로 저장
         Path target = Path.of("/home/ubuntu/vegeta-targets.txt");
         Files.writeString(target, finalContent, StandardCharsets.UTF_8);
 
         System.out.println("=== Vegeta Target File 생성 완료 ===");
         System.out.println(finalContent);
 
-        // 5. HEX DUMP 앞부분 출력 (BOM/개행 체크)
         byte[] bytes = Files.readAllBytes(target);
         StringBuilder hex = new StringBuilder();
         for (int i = 0; i < Math.min(bytes.length, 64); i++) {
@@ -108,7 +102,8 @@ public class VegetaService implements VegetaUseCase {
                     bin, "attack",
                     "-rate", String.valueOf(rate),
                     "-duration", durationSec + "s",
-                    "-targets", targetPath
+                    "-targets", targetPath,
+                    "-format", "http" // HTTP 포맷 강제
             );
             attackPb.redirectOutput(outBin.toFile());
             attackPb.redirectErrorStream(false);
