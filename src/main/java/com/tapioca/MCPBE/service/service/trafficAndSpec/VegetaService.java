@@ -34,6 +34,7 @@ public class VegetaService implements VegetaUseCase {
     /**
      * Vegeta 타겟 파일 생성
      */
+    @Override
     public String makeTargetFile(String method, String url, String jwt, JsonNode body) throws IOException {
         System.out.println("=== makeTargetFile() 진입 ===");
         System.out.println("[입력값] method=" + method + ", url=" + url + ", jwt=" + jwt + ", body=" + body);
@@ -42,13 +43,9 @@ public class VegetaService implements VegetaUseCase {
         boolean hasJwt = (jwt != null && !jwt.isBlank());
         boolean hasBody = (body != null && !body.isNull());
 
-        System.out.println("[vegeta] 변환된 method=" + upperMethod);
-        System.out.println("[vegeta] JWT 존재 여부=" + hasJwt);
-        System.out.println("[vegeta] Body 존재 여부=" + hasBody);
-
         StringBuilder sb = new StringBuilder();
 
-        // 1. HTTP 메서드와 URL
+        // 1. HTTP 메서드 + URL
         sb.append(upperMethod).append(" ").append(url).append("\n");
 
         // 2. Authorization 헤더
@@ -56,30 +53,29 @@ public class VegetaService implements VegetaUseCase {
             sb.append("Authorization: Bearer ").append(jwt).append("\n");
         }
 
-        // 3. Content-Type 헤더 & Body
+        // 3. Body 있을 경우 Content-Type + Content-Length + 바디
         if (hasBody) {
-            sb.append("Content-Type: application/json; charset=UTF-8").append("\n");
-            sb.append("\n"); // 헤더와 바디 구분
             String jsonBodyString = body.isTextual()
                     ? body.textValue()
                     : objectMapper.writeValueAsString(body);
-            sb.append(jsonBodyString);
-            if (!jsonBodyString.endsWith("\n")) {
-                sb.append("\n");
-            }
+
+            int contentLength = jsonBodyString.getBytes(StandardCharsets.UTF_8).length;
+
+            sb.append("Content-Type: application/json; charset=UTF-8").append("\n");
+            sb.append("Content-Length: ").append(contentLength).append("\n");
+            sb.append("\n"); // 헤더-바디 구분
+            sb.append(jsonBodyString).append("\n"); // 마지막 개행 필수
         } else {
             sb.append("\n");
         }
 
-        // 4. 파일 저장
         Path path = Paths.get("/home/ubuntu/vegeta-targets.txt");
         Files.writeString(path, sb.toString(), StandardCharsets.UTF_8);
 
         System.out.println("=== Vegeta Target File 생성 완료 ===");
         System.out.println(sb);
 
-        // 원래 스타일대로 경로 반환
-        return path.toString();
+        return path.toString(); // 기존 void였지만 네 로직에 맞게 path 반환
     }
 
 
