@@ -49,12 +49,12 @@ public class VegetaService implements VegetaUseCase {
             sb.append("Content-Type: application/json; charset=UTF-8").append("\n\n");
 
             String jsonBodyString;
-            // JsonNode가 순수 문자열일 경우 이스케이프 방지
             if (body.isTextual()) {
                 jsonBodyString = body.textValue();
             } else {
-                jsonBodyString = objectMapper.writeValueAsString(body);
+                jsonBodyString = body.toString(); // ✅ 원본 JSON 그대로
             }
+
 
             sb.append(jsonBodyString).append("\n");
         } else {
@@ -136,6 +136,10 @@ public class VegetaService implements VegetaUseCase {
             if (report.exitValue() != 0) {
                 throw new RuntimeException("vegeta report failed (exit=" + report.exitValue() + ")");
             }
+
+
+            System.out.println("=== Vegeta Report STDOUT ===");
+            System.out.println(json);  // ❌ 여기서 json은 아직 선언되지도, 읽히지도 않음
 
             return json;
 
