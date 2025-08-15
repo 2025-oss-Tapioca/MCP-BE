@@ -27,26 +27,41 @@ public class VegetaService implements VegetaUseCase {
 
     private static final Set<String> METHODS_WITH_BODY = Set.of("POST", "PUT", "PATCH");
 
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    /**
+     * Vegeta 타겟 파일 생성
+     */
     public String makeTargetFile(String method, String url, String jwt, JsonNode body) throws IOException {
         final String m = (method == null ? "GET" : method.trim().toUpperCase());
-        final boolean hasJwt  = jwt != null && !jwt.isBlank();
+        final boolean hasJwt = jwt != null && !jwt.isBlank();
         final boolean hasBody = body != null && !body.isNull() && METHODS_WITH_BODY.contains(m);
 
         System.out.println("[vegeta] method=" + m + " url=" + url + " hasBody=" + hasBody);
 
         StringBuilder sb = new StringBuilder();
         sb.append(m).append(" ").append(url).append("\n");
-        if (hasJwt) sb.append("Authorization: Bearer ").append(jwt).append("\n");
+        if (hasJwt) {
+            sb.append("Authorization: Bearer ").append(jwt).append("\n");
+        }
 
         if (hasBody) {
-            sb.append("Content-Type: application/json").append("\n\n");
-            // JSON 안정적으로 직렬화
-            String jsonBodyString = new ObjectMapper().writeValueAsString(body);
+            sb.append("Content-Type: application/json; charset=UTF-8").append("\n\n");
+
+            String jsonBodyString;
+            // JsonNode가 순수 문자열일 경우 이스케이프 방지
+            if (body.isTextual()) {
+                jsonBodyString = body.textValue();
+            } else {
+                jsonBodyString = objectMapper.writeValueAsString(body);
+            }
+
             sb.append(jsonBodyString).append("\n");
         } else {
             sb.append("\n");
         }
 
+        // Windows 환경 개행 통일
         String finalContent = sb.toString().replace("\r\n", "\n");
 
         Path target = Files.createTempFile("vegeta-targets", ".txt");
@@ -57,11 +72,13 @@ public class VegetaService implements VegetaUseCase {
         return target.toAbsolutePath().toString();
     }
 
+    /**
+     * Vegeta 실행
+     */
     public String runVegeta(String targetPath, int rate, int durationSec) {
         final String bin = resolveVegetaBin();
         try {
             Path outBin = Files.createTempFile("vegeta-", ".bin");
-            // 실제 생성되는 파일명 예: /tmp/vegeta-1234567890.bin (임시 디렉토리에 랜덤 숫자 포함)
 
             ProcessBuilder attackPb = new ProcessBuilder(
                     bin, "attack",
@@ -80,7 +97,9 @@ public class VegetaService implements VegetaUseCase {
                 try (BufferedReader br = new BufferedReader(
                         new InputStreamReader(attack.getErrorStream(), StandardCharsets.UTF_8))) {
                     String line;
-                    while ((line = br.readLine()) != null) errBuf.append(line).append('\n');
+                    while ((line = br.readLine()) != null) {
+                        errBuf.append(line).append('\n');
+                    }
                 } catch (IOException ignore) {}
             });
             errGobbler.setDaemon(true);
@@ -91,7 +110,11 @@ public class VegetaService implements VegetaUseCase {
                 attack.destroyForcibly();
                 throw new RuntimeException("vegeta attack timeout");
             }
-            try { errGobbler.join(1500); } catch (InterruptedException ignored) { Thread.currentThread().interrupt(); }
+            try {
+                errGobbler.join(1500);
+            } catch (InterruptedException ignored) {
+                Thread.currentThread().interrupt();
+            }
 
             if (attack.exitValue() != 0) {
                 String targetsPreview = Files.readString(Path.of(targetPath), StandardCharsets.UTF_8);
@@ -124,7 +147,7 @@ public class VegetaService implements VegetaUseCase {
     }
 
     /**
-     * 경로 체크 없이 설정된 vegetaBin 그대로 사용
+     * 설정된 vegeta 실행 경로 사용
      */
     private String resolveVegetaBin() {
         return vegetaBin.trim();
