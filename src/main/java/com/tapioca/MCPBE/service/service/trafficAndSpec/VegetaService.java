@@ -14,6 +14,8 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -36,53 +38,52 @@ public class VegetaService implements VegetaUseCase {
         System.out.println("=== makeTargetFile() 진입 ===");
         System.out.println("[입력값] method=" + method + ", url=" + url + ", jwt=" + jwt + ", body=" + body);
 
-        final String m = (method == null ? "GET" : method.trim().toUpperCase());
-        url = (url == null ? "" : url.trim());
-        final boolean hasJwt = jwt != null && !jwt.isBlank();
-        final boolean hasBody = body != null && !body.isNull() && METHODS_WITH_BODY.contains(m);
+        String upperMethod = method.toUpperCase(Locale.ROOT);
+        boolean hasJwt = (jwt != null && !jwt.isBlank());
+        boolean hasBody = (body != null && !body.isNull());
 
-        if (url.isEmpty()) {
-            throw new IllegalArgumentException("URL이 비어 있습니다.");
-        }
-
-        System.out.println("[vegeta] 변환된 method=" + m);
+        System.out.println("[vegeta] 변환된 method=" + upperMethod);
         System.out.println("[vegeta] JWT 존재 여부=" + hasJwt);
         System.out.println("[vegeta] Body 존재 여부=" + hasBody);
 
         StringBuilder sb = new StringBuilder();
-        sb.append(m).append(" ").append(url).append("\n");
 
+        // 1. HTTP 메서드와 URL
+        sb.append(upperMethod).append(" ").append(url).append("\n");
+
+        // 2. Authorization 헤더
         if (hasJwt) {
             sb.append("Authorization: Bearer ").append(jwt).append("\n");
         }
 
+        // 3. Content-Type 헤더 & Body
         if (hasBody) {
-            sb.append("Content-Type: application/json; charset=UTF-8").append("\n").append("\n");
-            String jsonBodyString = body.isTextual() ? body.textValue() : objectMapper.writeValueAsString(body);
-            sb.append(jsonBodyString).append("\n");
+            sb.append("Content-Type: application/json; charset=UTF-8").append("\n");
+            sb.append("\n"); // 헤더와 바디 구분
+            String jsonBodyString = body.isTextual()
+                    ? body.textValue()
+                    : objectMapper.writeValueAsString(body);
+            sb.append(jsonBodyString);
+            if (!jsonBodyString.endsWith("\n")) {
+                sb.append("\n");
+            }
         } else {
             sb.append("\n");
         }
 
-        String finalContent = sb.toString()
-                .replace("\uFEFF", "")
-                .replace("\r\n", "\n");
-
-        Path target = Path.of("/home/ubuntu/vegeta-targets.txt");
-        Files.writeString(target, finalContent, StandardCharsets.UTF_8);
+        // 4. 파일 저장
+        Path path = Paths.get("/home/ubuntu/vegeta-targets.txt");
+        Files.writeString(path, sb.toString(), StandardCharsets.UTF_8);
 
         System.out.println("=== Vegeta Target File 생성 완료 ===");
-        System.out.println(finalContent);
+        System.out.println(sb);
 
-        byte[] bytes = Files.readAllBytes(target);
-        StringBuilder hex = new StringBuilder();
-        for (int i = 0; i < Math.min(bytes.length, 64); i++) {
-            hex.append(String.format("%02X ", bytes[i]));
-        }
-        System.out.println("[HEX DUMP] " + hex);
-
-        return target.toAbsolutePath().toString();
+        // 원래 스타일대로 경로 반환
+        return path.toString();
     }
+
+
+
 
     /**
      * Vegeta 실행
