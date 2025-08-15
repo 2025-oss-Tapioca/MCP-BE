@@ -36,52 +36,60 @@ public class VegetaService implements VegetaUseCase {
         System.out.println("=== makeTargetFile() 진입 ===");
         System.out.println("[입력값] method=" + method + ", url=" + url + ", jwt=" + jwt + ", body=" + body);
 
+        // 1. 기본값 + 공백/제어문자 제거
         final String m = (method == null ? "GET" : method.trim().toUpperCase());
+        url = (url == null ? "" : url.trim());
         final boolean hasJwt = jwt != null && !jwt.isBlank();
         final boolean hasBody = body != null && !body.isNull() && METHODS_WITH_BODY.contains(m);
+
+        if (url.isEmpty()) {
+            throw new IllegalArgumentException("URL이 비어 있습니다.");
+        }
 
         System.out.println("[vegeta] 변환된 method=" + m);
         System.out.println("[vegeta] JWT 존재 여부=" + hasJwt);
         System.out.println("[vegeta] Body 존재 여부=" + hasBody);
 
+        // 2. vegeta 타겟 파일 포맷 구성
         StringBuilder sb = new StringBuilder();
         sb.append(m).append(" ").append(url).append("\n");
 
         if (hasJwt) {
-            System.out.println("[vegeta] Authorization 헤더 추가");
-            sb.append("Authorization: Bearer ").append(jwt).append("\n");
+            sb.append("Authorization: Bearer ").append(jwt.trim()).append("\n");
         }
 
         if (hasBody) {
-            System.out.println("[vegeta] Content-Type 헤더 추가 + Body 추가");
-            sb.append("Content-Type: application/json; charset=UTF-8").append("\n\n");
-
-            String jsonBodyString;
-            if (body.isTextual()) {
-                System.out.println("[vegeta] Body가 Text 형식 → textValue 사용");
-                jsonBodyString = body.textValue();
-            } else {
-                System.out.println("[vegeta] Body가 JSON 형식 → toString 사용");
-                jsonBodyString = body.toString();
-            }
-            sb.append(jsonBodyString).append("\n");
-        } else {
-            System.out.println("[vegeta] Body 없음");
-            sb.append("\n");
+            sb.append("Content-Type: application/json; charset=UTF-8").append("\n");
+            sb.append("\n"); // 헤더와 바디 구분
+            String jsonBodyString = body.isTextual() ? body.textValue() : objectMapper.writeValueAsString(body);
+            sb.append(jsonBodyString.trim());
         }
 
+        sb.append("\n"); // 파일 끝에 개행
+
+        // 3. BOM 제거 + CRLF → LF 통일
         String finalContent = sb.toString()
-                .replace("\uFEFF", "") // BOM 제거
-                .replaceAll("^[\\r\\n]+", "") // 맨 앞 불필요한 줄바꿈 제거
+                .replace("\uFEFF", "")
                 .replace("\r\n", "\n");
-        Path target = Files.createTempFile("vegeta-targets", ".txt");
+
+        // 4. 저장 (홈 디렉토리로 저장해서 EC2에서 바로 확인 가능)
+        Path target = Path.of("/home/ubuntu/vegeta-targets.txt");
         Files.writeString(target, finalContent, StandardCharsets.UTF_8);
 
         System.out.println("=== Vegeta Target File 생성 완료 ===");
         System.out.println(finalContent);
 
+        // 5. Hex Dump로 BOM/숨은 문자 체크
+        byte[] bytes = Files.readAllBytes(target);
+        StringBuilder hex = new StringBuilder();
+        for (int i = 0; i < Math.min(bytes.length, 64); i++) { // 앞 64바이트만 확인
+            hex.append(String.format("%02X ", bytes[i]));
+        }
+        System.out.println("[HEX DUMP] " + hex);
+
         return target.toAbsolutePath().toString();
     }
+
 
     /**
      * Vegeta 실행
