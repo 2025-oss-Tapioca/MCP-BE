@@ -59,7 +59,7 @@ public class VegetaService implements VegetaUseCase {
         }
 
         if (hasBody) {
-            sb.append("Content-Type: application/json; charset=UTF-8").append("\n");
+            sb.append("Content-Type: application/json; charset=UTF-8").append("\n\n");
             sb.append("\n"); // 헤더와 바디 구분
             String jsonBodyString = body.isTextual() ? body.textValue() : objectMapper.writeValueAsString(body);
             sb.append(jsonBodyString.trim());
