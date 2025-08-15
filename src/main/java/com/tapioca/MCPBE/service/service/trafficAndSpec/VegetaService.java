@@ -44,7 +44,6 @@ public class VegetaService implements VegetaUseCase {
 
         String upperMethod = method.toUpperCase(Locale.ROOT);
         boolean hasJwt = (jwt != null && !jwt.isBlank());
-        boolean hasBody = (body != null && !body.isNull());
 
         StringBuilder sb = new StringBuilder();
 
@@ -56,22 +55,17 @@ public class VegetaService implements VegetaUseCase {
             sb.append("Authorization: Bearer ").append(jwt).append("\n");
         }
 
-        // 3. Body 있을 경우 Content-Type + Content-Length + 바디
-        if (hasBody) {
-            String jsonBodyString = body.isTextual()
-                    ? body.textValue()
-                    : objectMapper.writeValueAsString(body);
+        // 3. Body (무조건 포함)
+        String jsonBodyString = objectMapper.writeValueAsString(body);
 
-            int contentLength = jsonBodyString.getBytes(StandardCharsets.UTF_8).length;
+        int contentLength = jsonBodyString.getBytes(StandardCharsets.UTF_8).length;
 
-            sb.append("Content-Type: application/json; charset=UTF-8").append("\n");
-            sb.append("Content-Length: ").append(contentLength).append("\n");
-            sb.append("\n"); // 헤더-바디 구분
-            sb.append(jsonBodyString).append("\n"); // 마지막 개행 필수
-        } else {
-            sb.append("\n");
-        }
+        sb.append("Content-Type: application/json; charset=UTF-8").append("\n");
+        sb.append("Content-Length: ").append(contentLength).append("\n");
+        sb.append("\n"); // 헤더-바디 구분
+        sb.append(jsonBodyString).append("\n"); // 마지막 개행 필수
 
+        // 4. 파일 저장
         Path path = Paths.get(targetFilePath).toAbsolutePath();
         Files.writeString(path, sb.toString(), StandardCharsets.UTF_8);
 
