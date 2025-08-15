@@ -70,7 +70,10 @@ public class VegetaService implements VegetaUseCase {
             sb.append("\n");
         }
 
-        String finalContent = sb.toString().replace("\uFEFF", "").replace("\r\n", "\n");
+        String finalContent = sb.toString()
+                .replace("\uFEFF", "") // BOM 제거
+                .replaceAll("^[\\r\\n]+", "") // 맨 앞 불필요한 줄바꿈 제거
+                .replace("\r\n", "\n");
         Path target = Files.createTempFile("vegeta-targets", ".txt");
         Files.writeString(target, finalContent, StandardCharsets.UTF_8);
 
