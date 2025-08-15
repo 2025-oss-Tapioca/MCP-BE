@@ -25,7 +25,6 @@ public class VegetaTestController {
     public TrafficTestResultDto testVegeta(
             @RequestBody TestVegetaRequestDto testVegetaRequestDto
     ){
-        System.out.println("test");
         return trafficTestUseCase.execute(
                 testVegetaRequestDto.method(),
                 testVegetaRequestDto.url(),
