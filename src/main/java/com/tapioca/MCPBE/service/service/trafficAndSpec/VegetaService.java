@@ -88,6 +88,22 @@ public class VegetaService implements VegetaUseCase {
         System.out.println("=== runVegeta() 진입 ===");
         System.out.println("[입력값] targetPath=" + targetPath + ", rate=" + rate + ", durationSec=" + durationSec);
 
+        // ✅ vegeta 실행 직전 파일 경로/내용 검증
+        try {
+            Path absoluteTarget = Paths.get(targetPath).toAbsolutePath();
+            System.out.println("=== Vegeta 실행 직전 target 파일 검증 ===");
+            System.out.println("실제 절대경로: " + absoluteTarget);
+            if (Files.exists(absoluteTarget)) {
+                System.out.println("--- 파일 내용 시작 ---");
+                System.out.println(Files.readString(absoluteTarget, StandardCharsets.UTF_8));
+                System.out.println("--- 파일 내용 끝 ---");
+            } else {
+                System.out.println("[경고] 해당 경로에 파일이 존재하지 않습니다!");
+            }
+        } catch (IOException e) {
+            System.out.println("[오류] target 파일 내용 읽기 실패: " + e.getMessage());
+        }
+
         final String bin = resolveVegetaBin();
         System.out.println("[vegeta] 실행 파일 경로: " + bin);
 
