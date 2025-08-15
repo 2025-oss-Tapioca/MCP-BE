@@ -1,6 +1,7 @@
 package com.tapioca.MCPBE.service.service.trafficAndSpec;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tapioca.MCPBE.service.usecase.trafficAndSpec.VegetaUseCase;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -36,15 +37,22 @@ public class VegetaService implements VegetaUseCase {
         StringBuilder sb = new StringBuilder();
         sb.append(m).append(" ").append(url).append("\n");
         if (hasJwt) sb.append("Authorization: Bearer ").append(jwt).append("\n");
+
         if (hasBody) {
             sb.append("Content-Type: application/json").append("\n\n");
-            sb.append(body.toString()).append("\n");
+            // JSON 안정적으로 직렬화
+            String jsonBodyString = new ObjectMapper().writeValueAsString(body);
+            sb.append(jsonBodyString).append("\n");
         } else {
             sb.append("\n");
         }
 
+        String finalContent = sb.toString().replace("\r\n", "\n");
+
         Path target = Files.createTempFile("vegeta-targets", ".txt");
-        Files.writeString(target, sb.toString(), StandardCharsets.UTF_8);
+        Files.writeString(target, finalContent, StandardCharsets.UTF_8);
+
+        System.out.println("=== Vegeta Target File ===\n" + finalContent);
 
         return target.toAbsolutePath().toString();
     }
