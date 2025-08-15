@@ -55,15 +55,16 @@ public class VegetaService implements VegetaUseCase {
         sb.append(m).append(" ").append(url).append("\n");
 
         if (hasJwt) {
-            sb.append("Authorization: Bearer ").append(jwt.trim()).append("\n");
+            sb.append("Authorization: Bearer ").append(jwt).append("\n");
         }
 
         if (hasBody) {
-            sb.append("Content-Type: application/json; charset=UTF-8").append("\n\n"); // ← 개행 2번 필수
+            // 개행 2번 보장
+            sb.append("Content-Type: application/json; charset=UTF-8").append("\n").append("\n");
             String jsonBodyString = body.isTextual() ? body.textValue() : objectMapper.writeValueAsString(body);
-            sb.append(jsonBodyString.trim()).append("\n");
+            sb.append(jsonBodyString).append("\n"); // trim() 제거
         } else {
-            sb.append("\n"); // Body 없으면 한 줄 개행
+            sb.append("\n"); // Body 없을 경우 개행 한 번
         }
 
         // 3. BOM 제거 + 개행 통일
