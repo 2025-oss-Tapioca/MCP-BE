@@ -39,38 +39,32 @@ public class VegetaService implements VegetaUseCase {
      */
     @Override
     public String makeTargetFile(String method, String url, String jwt, JsonNode body) throws IOException {
-        System.out.println("=== makeTargetFile() 진입 ===");
-        System.out.println("[입력값] method=" + method + ", url=" + url + ", jwt=" + jwt + ", body=" + body);
-
         String upperMethod = method.toUpperCase(Locale.ROOT);
         boolean hasJwt = (jwt != null && !jwt.isBlank());
 
+        // HTTP 요청 라인
         StringBuilder sb = new StringBuilder();
-
-        // 1. HTTP 메서드 + URL
         sb.append(upperMethod).append(" ").append(url).append("\n");
 
-        // 2. Authorization 헤더
+        // Authorization 헤더
         if (hasJwt) {
             sb.append("Authorization: Bearer ").append(jwt).append("\n");
         }
 
-        // 3. Body (무조건 포함)
-        String jsonBodyString = objectMapper.writeValueAsString(body);
-
-        int contentLength = jsonBodyString.getBytes(StandardCharsets.UTF_8).length;
-
+        // Content-Type
         sb.append("Content-Type: application/json; charset=UTF-8").append("\n");
-        sb.append("Content-Length: ").append(contentLength).append("\n");
-        sb.append("\n"); // 헤더-바디 구분
-        sb.append(jsonBodyString).append("\n"); // 마지막 개행 필수
 
-        // 4. 파일 저장
+        // 헤더와 바디 사이 빈 줄 1줄
+        sb.append("\n");
+
+        // JSON 바디 (UTF-8, BOM 없음)
+        if (body != null && !body.isEmpty()) {
+            sb.append(objectMapper.writeValueAsString(body)).append("\n");
+        }
+
+        // UTF-8로 파일 저장 (BOM 없음)
         Path path = Paths.get(targetFilePath).toAbsolutePath();
-        Files.writeString(path, sb.toString(), StandardCharsets.UTF_8);
-
-        System.out.println("=== Vegeta Target File 생성 완료 ===");
-        System.out.println(sb);
+        Files.write(path, sb.toString().getBytes(StandardCharsets.UTF_8));
 
         return path.toString();
     }
