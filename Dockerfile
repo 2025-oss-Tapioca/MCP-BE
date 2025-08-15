@@ -3,6 +3,13 @@ FROM eclipse-temurin:17-jre
 
 WORKDIR /app
 
+# vegeta 설치
+RUN apt-get update && apt-get install -y curl \
+    && curl -L https://github.com/tsenart/vegeta/releases/download/v12.12.0/vegeta_12.12.0_linux_amd64.tar.gz \
+    | tar -xz && mv vegeta /usr/local/bin/ \
+    && rm -rf vegeta_12.12.0_linux_amd64.tar.gz \
+    && apt-get clean
+
 # 로컬에서 빌드된 JAR을 이미지에 복사 (아래 JAR 파일명은 실제 파일명으로 교체)
 COPY build/libs/*.jar app.jar
 
