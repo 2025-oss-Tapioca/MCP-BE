@@ -24,8 +24,11 @@ import java.util.concurrent.TimeUnit;
 @RequiredArgsConstructor
 public class VegetaService implements VegetaUseCase {
 
-    @Value("${loadtest.vegeta.bin:}")
-    private String vegetaBin; // application.yml에서 지정된 vegeta 경로 사용
+    @Value("${loadtest.vegeta.bin}")
+    private String vegetaBin; // vegeta 실행 경로
+
+    @Value("${loadtest.vegeta.targetPath}")
+    private String targetFilePath; // vegeta 타겟 파일 경로
 
     private static final Set<String> METHODS_WITH_BODY = Set.of("POST", "PUT", "PATCH");
 
@@ -69,17 +72,14 @@ public class VegetaService implements VegetaUseCase {
             sb.append("\n");
         }
 
-        Path path = Paths.get("/home/ubuntu/vegeta-targets.txt");
+        Path path = Paths.get(targetFilePath).toAbsolutePath();
         Files.writeString(path, sb.toString(), StandardCharsets.UTF_8);
 
         System.out.println("=== Vegeta Target File 생성 완료 ===");
         System.out.println(sb);
 
-        return path.toString(); // 기존 void였지만 네 로직에 맞게 path 반환
+        return path.toString();
     }
-
-
-
 
     /**
      * Vegeta 실행
@@ -99,8 +99,8 @@ public class VegetaService implements VegetaUseCase {
                     bin, "attack",
                     "-rate", String.valueOf(rate),
                     "-duration", durationSec + "s",
-                    "-targets", targetPath,
-                    "-format", "http" // HTTP 포맷 강제
+                    "-targets", Paths.get(targetPath).toAbsolutePath().toString(),
+                    "-format", "http"
             );
             attackPb.redirectOutput(outBin.toFile());
             attackPb.redirectErrorStream(false);
@@ -175,7 +175,7 @@ public class VegetaService implements VegetaUseCase {
     }
 
     /**
-     * 설정된 vegeta 실행 경로 사용
+     * vegeta 실행 경로 반환
      */
     private String resolveVegetaBin() {
         System.out.println("[resolveVegetaBin] vegetaBin=" + vegetaBin);
