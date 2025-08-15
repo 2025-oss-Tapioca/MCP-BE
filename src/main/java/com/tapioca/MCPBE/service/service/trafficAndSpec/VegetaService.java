@@ -36,7 +36,7 @@ public class VegetaService implements VegetaUseCase {
         System.out.println("=== makeTargetFile() 진입 ===");
         System.out.println("[입력값] method=" + method + ", url=" + url + ", jwt=" + jwt + ", body=" + body);
 
-        // 1. 기본값 + 공백/제어문자 제거
+        // 1. 기본값 + 공백 제거
         final String m = (method == null ? "GET" : method.trim().toUpperCase());
         url = (url == null ? "" : url.trim());
         final boolean hasJwt = jwt != null && !jwt.isBlank();
@@ -50,7 +50,7 @@ public class VegetaService implements VegetaUseCase {
         System.out.println("[vegeta] JWT 존재 여부=" + hasJwt);
         System.out.println("[vegeta] Body 존재 여부=" + hasBody);
 
-        // 2. vegeta 타겟 파일 포맷 구성
+        // 2. vegeta 타겟 포맷
         StringBuilder sb = new StringBuilder();
         sb.append(m).append(" ").append(url).append("\n");
 
@@ -59,37 +59,35 @@ public class VegetaService implements VegetaUseCase {
         }
 
         if (hasBody) {
-            sb.append("Content-Type: application/json; charset=UTF-8").append("\n\n");
-            sb.append("\n"); // 헤더와 바디 구분
+            sb.append("Content-Type: application/json; charset=UTF-8").append("\n\n"); // ← 개행 2번 필수
             String jsonBodyString = body.isTextual() ? body.textValue() : objectMapper.writeValueAsString(body);
-            sb.append(jsonBodyString.trim());
+            sb.append(jsonBodyString.trim()).append("\n");
+        } else {
+            sb.append("\n"); // Body 없으면 한 줄 개행
         }
 
-        sb.append("\n"); // 파일 끝에 개행
-
-        // 3. BOM 제거 + CRLF → LF 통일
+        // 3. BOM 제거 + 개행 통일
         String finalContent = sb.toString()
                 .replace("\uFEFF", "")
                 .replace("\r\n", "\n");
 
-        // 4. 저장 (홈 디렉토리로 저장해서 EC2에서 바로 확인 가능)
+        // 4. Docker/EC2 어디서든 확인 가능하게 고정 경로 저장
         Path target = Path.of("/home/ubuntu/vegeta-targets.txt");
         Files.writeString(target, finalContent, StandardCharsets.UTF_8);
 
         System.out.println("=== Vegeta Target File 생성 완료 ===");
         System.out.println(finalContent);
 
-        // 5. Hex Dump로 BOM/숨은 문자 체크
+        // 5. HEX DUMP 앞부분 출력 (BOM/개행 체크)
         byte[] bytes = Files.readAllBytes(target);
         StringBuilder hex = new StringBuilder();
-        for (int i = 0; i < Math.min(bytes.length, 64); i++) { // 앞 64바이트만 확인
+        for (int i = 0; i < Math.min(bytes.length, 64); i++) {
             hex.append(String.format("%02X ", bytes[i]));
         }
         System.out.println("[HEX DUMP] " + hex);
 
         return target.toAbsolutePath().toString();
     }
-
 
     /**
      * Vegeta 실행
