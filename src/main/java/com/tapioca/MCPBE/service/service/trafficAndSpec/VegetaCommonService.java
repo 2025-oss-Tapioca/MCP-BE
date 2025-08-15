@@ -21,13 +21,10 @@ public class VegetaCommonService implements VegetaCommonUseCase {
     public String execute(String method, String url, String loginPath,String loginId,
                           String password, int rate, int duration, JsonNode jsonBody){
 
-        System.out.println("jwt 로직에 들어왔습니다");
         String jwt = null;
         if (hasText(loginId) && hasText(password) && hasText(loginPath)) {
             jwt = getJwtUseCase.getJwtFromLogin(loginId, password, loginPath);
         }
-
-        System.out.println("JWT : " + jwt);
 
         try{
             String targetPath = vegetaUseCase.makeTargetFile(method,url,jwt,jsonBody);
