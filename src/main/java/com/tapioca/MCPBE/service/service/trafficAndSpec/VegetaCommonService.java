@@ -29,6 +29,7 @@ public class VegetaCommonService implements VegetaCommonUseCase {
         try{
             String targetPath = vegetaUseCase.makeTargetFile(method,url,jwt,jsonBody);
             String output = vegetaUseCase.runVegeta(targetPath, rate, duration);
+            System.out.println("output :===> "+output);
 
             return output;
         } catch (Exception e) {
