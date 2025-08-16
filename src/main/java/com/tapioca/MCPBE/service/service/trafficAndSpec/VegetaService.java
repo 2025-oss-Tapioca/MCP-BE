@@ -2,6 +2,7 @@ package com.tapioca.MCPBE.service.service.trafficAndSpec;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.tapioca.MCPBE.service.usecase.trafficAndSpec.VegetaUseCase;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -15,6 +16,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Base64;
 import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -28,63 +30,84 @@ public class VegetaService implements VegetaUseCase {
     private String vegetaBin; // vegeta 실행 경로
 
     @Value("${loadtest.vegeta.targetPath}")
-    private String targetFilePath; // vegeta 타겟 파일 경로
+    private String targetFilePath; // vegeta 타겟 파일 경로(단일 요청을 덮어쓸 때 사용)
 
     private static final Set<String> METHODS_WITH_BODY = Set.of("POST", "PUT", "PATCH");
-
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
-     * Vegeta 타겟 파일 생성
+     * Vegeta 타겟 파일(JSON 포맷, NDJSON 1줄) 생성
      */
     @Override
     public String makeTargetFile(String method, String url, String jwt, JsonNode body) throws IOException {
-        String upperMethod = method.toUpperCase(Locale.ROOT);
-        boolean hasJwt = (jwt != null && !jwt.isBlank());
-
-        // HTTP 요청 라인
-        StringBuilder sb = new StringBuilder();
-        sb.append(upperMethod).append(" ").append(url).append("\n");
-
-        // Authorization 헤더
-        if (hasJwt) {
-            sb.append("Authorization: Bearer ").append(jwt).append("\n");
+        String upperMethod = (method == null ? "GET" : method.trim().toUpperCase(Locale.ROOT));
+        if (!Set.of("GET","POST","PUT","PATCH","DELETE","HEAD","OPTIONS").contains(upperMethod)) {
+            throw new IllegalArgumentException("Unsupported HTTP method: " + method);
+        }
+        if (url == null || url.isBlank()) {
+            throw new IllegalArgumentException("URL required");
         }
 
-        // Content-Type
-        sb.append("Content-Type: application/json; charset=UTF-8").append("\n");
+        // 파싱 오류 방지: 줄바꿈 제거
+        url = url.trim().replace("\r","").replace("\n","");
+        if (jwt != null) jwt = jwt.replace("\r","").replace("\n","");
 
-        // 헤더와 바디 사이 빈 줄 1줄
-        sb.append("\n");
+        boolean hasBody = (body != null && !body.isEmpty());
+        boolean sendBody = hasBody && METHODS_WITH_BODY.contains(upperMethod);
 
-        // JSON 바디 (UTF-8, BOM 없음)
-        if (body != null && !body.isEmpty()) {
-            sb.append(objectMapper.writeValueAsString(body)).append("\n");
+        // ---- Vegeta JSON 타겟 1건 구성 ----
+        ObjectNode root = objectMapper.createObjectNode();
+        root.put("method", upperMethod);
+        root.put("url", url);
+
+        // header: 각 키는 배열이어야 함
+        ObjectNode header = objectMapper.createObjectNode();
+        if (jwt != null && !jwt.isBlank()) {
+            header.putArray("Authorization").add("Bearer " + jwt);
+        }
+        if (sendBody) {
+            header.putArray("Content-Type").add("application/json; charset=UTF-8");
+        }
+        if (!header.isEmpty()) {
+            root.set("header", header);
         }
 
-        // UTF-8로 파일 저장 (BOM 없음)
+        if (sendBody) {
+            // 바디를 JSON 문자열로 직렬화 → UTF-8 바이트 → Base64
+            String bodyJson = objectMapper.writeValueAsString(body);
+            String base64 = Base64.getEncoder().encodeToString(bodyJson.getBytes(StandardCharsets.UTF_8));
+            root.put("body", base64);
+        }
+
+        String line = objectMapper.writeValueAsString(root) + "\n"; // NDJSON: 한 줄에 한 요청
+
+        // 파일 저장 (BOM 없음)
         Path path = Paths.get(targetFilePath).toAbsolutePath();
-        Files.write(path, sb.toString().getBytes(StandardCharsets.UTF_8));
+        if (path.getParent() != null) {
+            Files.createDirectories(path.getParent());
+        }
+        Files.write(path, line.getBytes(StandardCharsets.UTF_8));
 
         return path.toString();
     }
 
     /**
-     * Vegeta 실행
+     * Vegeta 실행(JSON 포맷)
      */
     public String runVegeta(String targetPath, int rate, int durationSec) {
-        System.out.println("=== runVegeta() 진입 ===");
+        System.out.println("=== runVegeta(JSON) ===");
         System.out.println("[입력값] targetPath=" + targetPath + ", rate=" + rate + ", durationSec=" + durationSec);
 
-        // ✅ vegeta 실행 직전 파일 경로/내용 검증
+        // 실행 전 파일 확인 (민감정보는 출력 금지/마스킹 권장)
         try {
             Path absoluteTarget = Paths.get(targetPath).toAbsolutePath();
-            System.out.println("=== Vegeta 실행 직전 target 파일 검증 ===");
             System.out.println("실제 절대경로: " + absoluteTarget);
             if (Files.exists(absoluteTarget)) {
-                System.out.println("--- 파일 내용 시작 ---");
-                System.out.println(Files.readString(absoluteTarget, StandardCharsets.UTF_8));
-                System.out.println("--- 파일 내용 끝 ---");
+                String preview = Files.readString(absoluteTarget, StandardCharsets.UTF_8)
+                        .replaceAll("(?i)(Authorization\"\\s*:\\s*\\[\\s*\")Bearer [^\"]+\"", "$1Bearer ******\"");
+                System.out.println("--- 파일 내용 (masked) 시작 ---");
+                System.out.println(preview);
+                System.out.println("--- 파일 내용 (masked) 끝 ---");
             } else {
                 System.out.println("[경고] 해당 경로에 파일이 존재하지 않습니다!");
             }
@@ -95,8 +118,9 @@ public class VegetaService implements VegetaUseCase {
         final String bin = resolveVegetaBin();
         System.out.println("[vegeta] 실행 파일 경로: " + bin);
 
+        Path outBin = null;
         try {
-            Path outBin = Files.createTempFile("vegeta-", ".bin");
+            outBin = Files.createTempFile("vegeta-", ".bin");
             System.out.println("[vegeta] 결과 저장 bin 파일 경로: " + outBin);
 
             ProcessBuilder attackPb = new ProcessBuilder(
@@ -104,7 +128,7 @@ public class VegetaService implements VegetaUseCase {
                     "-rate", String.valueOf(rate),
                     "-duration", durationSec + "s",
                     "-targets", Paths.get(targetPath).toAbsolutePath().toString(),
-                    "-format", "http"
+                    "-format", "json" // ★ JSON 포맷 사용 ★
             );
             attackPb.redirectOutput(outBin.toFile());
             attackPb.redirectErrorStream(false);
@@ -118,6 +142,8 @@ public class VegetaService implements VegetaUseCase {
                         new InputStreamReader(attack.getErrorStream(), StandardCharsets.UTF_8))) {
                     String line;
                     while ((line = br.readLine()) != null) {
+                        // Authorization 마스킹
+                        line = line.replaceAll("(?i)(Authorization:\\s*Bearer )\\S+", "$1******");
                         System.out.println("[stderr] " + line);
                         errBuf.append(line).append('\n');
                     }
@@ -128,7 +154,7 @@ public class VegetaService implements VegetaUseCase {
             errGobbler.setDaemon(true);
             errGobbler.start();
 
-            boolean finished = attack.waitFor(durationSec + 30L, TimeUnit.SECONDS);
+            boolean finished = attack.waitFor(Math.max(durationSec + 30, 60), TimeUnit.SECONDS);
             System.out.println("[vegeta] attack 종료 여부: " + finished);
 
             if (!finished) {
@@ -137,15 +163,16 @@ public class VegetaService implements VegetaUseCase {
                 throw new RuntimeException("vegeta attack timeout");
             }
 
-            errGobbler.join(1500);
+            errGobbler.join(3000);
 
             if (attack.exitValue() != 0) {
-                String targetsPreview = Files.readString(Path.of(targetPath), StandardCharsets.UTF_8);
+                String targetsPreview = Files.readString(Path.of(targetPath), StandardCharsets.UTF_8)
+                        .replaceAll("(?i)(\"Authorization\"\\s*:\\s*\\[\\s*\")Bearer [^\"]+\"", "$1Bearer ******\"");
                 System.out.println("[오류] vegeta attack 실패 - exitCode=" + attack.exitValue());
                 throw new RuntimeException(
                         "vegeta attack failed (exit=" + attack.exitValue() + ")\n" +
                                 "stderr:\n" + errBuf + "\n" +
-                                "targets:\n" + targetsPreview
+                                "targets (masked):\n" + targetsPreview
                 );
             }
 
@@ -159,7 +186,7 @@ public class VegetaService implements VegetaUseCase {
             String json = new String(report.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
             System.out.println("=== Vegeta Report STDOUT ===\n" + json);
 
-            report.waitFor(15, TimeUnit.SECONDS);
+            report.waitFor(30, TimeUnit.SECONDS);
             System.out.println("[vegeta] report 종료 코드=" + report.exitValue());
 
             if (report.exitValue() != 0) {
@@ -167,20 +194,19 @@ public class VegetaService implements VegetaUseCase {
                 throw new RuntimeException("vegeta report failed (exit=" + report.exitValue() + ")");
             }
 
-            System.out.println("=== runVegeta() 완료 ===");
             return json;
 
         } catch (IOException | InterruptedException e) {
             System.out.println("[예외 발생] " + e.getMessage());
-            e.printStackTrace();
             if (e instanceof InterruptedException) Thread.currentThread().interrupt();
             throw new RuntimeException("Vegeta 실행 실패 - vegeta 경로 또는 실행 환경 확인", e);
+        } finally {
+            try {
+                if (outBin != null) Files.deleteIfExists(outBin);
+            } catch (IOException ignore) {}
         }
     }
 
-    /**
-     * vegeta 실행 경로 반환
-     */
     private String resolveVegetaBin() {
         System.out.println("[resolveVegetaBin] vegetaBin=" + vegetaBin);
         return vegetaBin.trim();
