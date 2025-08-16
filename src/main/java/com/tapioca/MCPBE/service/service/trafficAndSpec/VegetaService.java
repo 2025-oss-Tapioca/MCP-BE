@@ -182,8 +182,7 @@ public class VegetaService implements VegetaUseCase {
             errGobbler.start();
 
             // ★ 대기 시간 계산: dur + 여유(설정), 혹은 2*dur+60 중 큰 값
-            int attackWait = Math.max(durationSec + Math.max(30, attackExtraWaitSec),
-                    durationSec * 2 + 60);
+            int attackWait = Math.max(durationSec + 120, durationSec * 2 + 60);
             boolean finished = attack.waitFor(attackWait, TimeUnit.SECONDS);
             System.out.println("[vegeta] attack 종료 여부: " + finished + " (wait=" + attackWait + "s)");
 
