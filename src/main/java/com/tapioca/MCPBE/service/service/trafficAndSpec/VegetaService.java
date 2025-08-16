@@ -16,7 +16,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;      // ★ 추가
 import java.util.Base64;
+import java.util.List;           // ★ 추가
 import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -31,6 +33,19 @@ public class VegetaService implements VegetaUseCase {
 
     @Value("${loadtest.vegeta.targetPath}")
     private String targetFilePath; // vegeta 타겟 파일 경로(단일 요청을 덮어쓸 때 사용)
+
+    // ★ 설정 가능한 파라미터들
+    @Value("${loadtest.vegeta.httpTimeoutSec:5}")
+    private int httpTimeoutSec; // Vegeta per-request HTTP timeout (-timeout)
+
+    @Value("${loadtest.vegeta.attackExtraWaitSec:120}")
+    private int attackExtraWaitSec; // duration 외 여유 시간
+
+    @Value("${loadtest.vegeta.reportMaxWaitSec:300}")
+    private int reportMaxWaitSec; // report 단계 최대 대기
+
+    @Value("${loadtest.vegeta.maxWorkers:}") // 빈 문자열이면 미사용
+    private String maxWorkers;
 
     private static final Set<String> METHODS_WITH_BODY = Set.of("POST", "PUT", "PATCH");
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -97,6 +112,10 @@ public class VegetaService implements VegetaUseCase {
     public String runVegeta(String targetPath, int rate, int durationSec) {
         System.out.println("=== runVegeta(JSON) ===");
         System.out.println("[입력값] targetPath=" + targetPath + ", rate=" + rate + ", durationSec=" + durationSec);
+        System.out.println("[설정] httpTimeoutSec=" + httpTimeoutSec +
+                "s, attackExtraWaitSec=" + attackExtraWaitSec +
+                "s, reportMaxWaitSec=" + reportMaxWaitSec + "s" +
+                (maxWorkers != null && !maxWorkers.isBlank() ? (", maxWorkers=" + maxWorkers) : ""));
 
         // 실행 전 파일 확인 (민감정보는 출력 금지/마스킹 권장)
         try {
@@ -123,17 +142,25 @@ public class VegetaService implements VegetaUseCase {
             outBin = Files.createTempFile("vegeta-", ".bin");
             System.out.println("[vegeta] 결과 저장 bin 파일 경로: " + outBin);
 
-            ProcessBuilder attackPb = new ProcessBuilder(
-                    bin, "attack",
-                    "-rate", String.valueOf(rate),
-                    "-duration", durationSec + "s",
-                    "-targets", Paths.get(targetPath).toAbsolutePath().toString(),
-                    "-format", "json" // ★ JSON 포맷 사용 ★
-            );
+            // ★ 명령 인자 리스트로 구성 (조건부 옵션 포함)
+            List<String> args = new ArrayList<>();
+            args.add(bin); args.add("attack");
+            args.add("-rate"); args.add(String.valueOf(rate));
+            args.add("-duration"); args.add(durationSec + "s");
+            args.add("-targets"); args.add(Paths.get(targetPath).toAbsolutePath().toString());
+            args.add("-format"); args.add("json");
+            // per-request timeout
+            args.add("-timeout"); args.add(Math.max(1, httpTimeoutSec) + "s");
+            // (선택) 워커 상한
+            if (maxWorkers != null && !maxWorkers.isBlank()) {
+                args.add("-max-workers"); args.add(maxWorkers.trim());
+            }
+
+            ProcessBuilder attackPb = new ProcessBuilder(args);
             attackPb.redirectOutput(outBin.toFile());
             attackPb.redirectErrorStream(false);
 
-            System.out.println("[vegeta] attack 프로세스 시작");
+            System.out.println("[vegeta] attack 프로세스 시작: " + String.join(" ", args));
             Process attack = attackPb.start();
 
             StringBuilder errBuf = new StringBuilder();
@@ -154,13 +181,16 @@ public class VegetaService implements VegetaUseCase {
             errGobbler.setDaemon(true);
             errGobbler.start();
 
-            boolean finished = attack.waitFor(Math.max(durationSec + 30, 60), TimeUnit.SECONDS);
-            System.out.println("[vegeta] attack 종료 여부: " + finished);
+            // ★ 대기 시간 계산: dur + 여유(설정), 혹은 2*dur+60 중 큰 값
+            int attackWait = Math.max(durationSec + Math.max(30, attackExtraWaitSec),
+                    durationSec * 2 + 60);
+            boolean finished = attack.waitFor(attackWait, TimeUnit.SECONDS);
+            System.out.println("[vegeta] attack 종료 여부: " + finished + " (wait=" + attackWait + "s)");
 
             if (!finished) {
                 System.out.println("[오류] vegeta attack timeout");
                 attack.destroyForcibly();
-                throw new RuntimeException("vegeta attack timeout");
+                throw new RuntimeException("vegeta attack timeout (wait=" + attackWait + "s)");
             }
 
             errGobbler.join(3000);
@@ -183,15 +213,14 @@ public class VegetaService implements VegetaUseCase {
                     outBin.toString()
             ).redirectErrorStream(true).start();
 
+            // ★ report 단계도 넉넉히 (최대 reportMaxWaitSec)
+            boolean reportDone = report.waitFor(Math.max(60, Math.min(reportMaxWaitSec, attackWait)), TimeUnit.SECONDS);
             String json = new String(report.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
             System.out.println("=== Vegeta Report STDOUT ===\n" + json);
+            System.out.println("[vegeta] report 종료 코드=" + report.exitValue() + ", done=" + reportDone);
 
-            report.waitFor(30, TimeUnit.SECONDS);
-            System.out.println("[vegeta] report 종료 코드=" + report.exitValue());
-
-            if (report.exitValue() != 0) {
-                System.out.println("[오류] vegeta report 실패");
-                throw new RuntimeException("vegeta report failed (exit=" + report.exitValue() + ")");
+            if (!reportDone || report.exitValue() != 0) {
+                throw new RuntimeException("vegeta report failed (exit=" + report.exitValue() + ", done=" + reportDone + ")");
             }
 
             return json;
