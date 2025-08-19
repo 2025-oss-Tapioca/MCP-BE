@@ -50,6 +50,19 @@ dependencies {
 
 	// ✅ Hibernate Validator
 	implementation 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
+
+	// SSH tail (PEM 프라이빗키 인증)
+	implementation "com.hierynomus:sshj:0.37.0"
+
+	// AWS CloudWatch Logs (SDK v2)
+	implementation platform("software.amazon.awssdk:bom:2.25.60")
+	implementation "software.amazon.awssdk:cloudwatchlogs"
+	implementation "software.amazon.awssdk:sts"
+
+	// BE WebSocket 클라이언트 (javax.websocket 기반)
+	implementation "org.glassfish.tyrus.bundles:tyrus-standalone-client:1.17"
+
+	implementation 'org.springframework.boot:spring-boot-starter-webflux'
 }
 
 tasks.named('test') {
