@@ -71,6 +71,19 @@ public enum     ErrorCode {
     METHOD_NOT_ALLOWED("40500", HttpStatus.METHOD_NOT_ALLOWED, "지원하지 않는 HTTP 메소드입니다."),
     TYPE_NOT_ALLOWED("40501", HttpStatus.METHOD_NOT_ALLOWED, "지원하지 않는 요청 타입입니다."),
 
+
+    /**
+     * 407** Log
+     */
+    LOG_SSH_CONNECTION_FAILED("40700", HttpStatus.INTERNAL_SERVER_ERROR, "SSH 연결에 실패했습니다."),
+    LOG_SSH_AUTH_FAILED("40701", HttpStatus.UNAUTHORIZED, "SSH 인증에 실패했습니다. (Private Key 불일치)"),
+    LOG_SSH_EXECUTION_FAILED("40702", HttpStatus.INTERNAL_SERVER_ERROR, "SSH 명령 실행 중 오류가 발생했습니다."),
+    LOG_CLOUDWATCH_CONNECTION_FAILED("40710", HttpStatus.INTERNAL_SERVER_ERROR, "CloudWatch 연결에 실패했습니다."),
+    LOG_CLOUDWATCH_SUBSCRIBE_FAILED("40711", HttpStatus.INTERNAL_SERVER_ERROR, "CloudWatch 구독 요청에 실패했습니다."),
+    LOG_STREAM_NOT_FOUND("40720", HttpStatus.NOT_FOUND, "해당 로그 스트림을 찾을 수 없습니다."),
+    LOG_PARSING_ERROR("40730", HttpStatus.INTERNAL_SERVER_ERROR, "로그 파싱 중 오류가 발생했습니다."),
+
+
     /**
      * 409** Conflict
      */

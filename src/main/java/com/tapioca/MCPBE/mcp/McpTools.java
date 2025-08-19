@@ -13,10 +13,16 @@ import com.tapioca.MCPBE.service.usecase.CodeSkeletonUseCase;
 import com.tapioca.MCPBE.service.usecase.GitPushUseCase;
 import com.tapioca.MCPBE.service.usecase.trafficAndSpec.SpecTestUseCase;
 import com.tapioca.MCPBE.service.usecase.trafficAndSpec.TrafficTestUseCase;
+import com.tapioca.MCPBE.service.usecase.LogContextByLevelUseCase;
+import com.tapioca.MCPBE.service.usecase.LogRangeQueryUseCase;
+import com.tapioca.MCPBE.domain.dto.request.LogLineDto;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Component;
 import lombok.RequiredArgsConstructor;
+
+import java.util.List;
+
 
 @Component
 @RequiredArgsConstructor
@@ -26,6 +32,8 @@ public class McpTools {
     private final SpecTestUseCase specTestUseCase;
     private final CodeSkeletonUseCase codeSkeletonUseCase;
     private final GitPushUseCase gitPushUseCase;
+    private final LogRangeQueryUseCase logRangeQueryUseCase;
+    private final LogRangeQueryUseCase logContextByLevelUseCase;
 
     @Tool(
             name = "traffic_test",
@@ -79,5 +87,31 @@ public class McpTools {
             @ToolParam(description = "Github Access Token을 가져오는데 필요한 teamCode입니다.") String teamCode
     ) {
         return gitPushUseCase.execute(teamCode);
+    }
+
+    @Tool(
+            name = "log_range",
+            description = "팀/소스 로그를 기간으로 조회합니다. 날짜는 ISO('2025-08-19T15:00'), 'yyyy-MM-dd HH:mm', 'yyyy/MM/dd HH:mm', epoch(sec/ms) 등 유연 포맷 지원."
+    )
+    public List<LogLineDto> logRange(
+            @ToolParam(description = "BACKEND | FRONTEND | RDS") String sourceType,
+            @ToolParam(description = "팀 코드") String teamCode,
+            @ToolParam(description = "from 시각") String from,
+            @ToolParam(description = "to 시각") String to
+    ) {
+        return logRangeQueryUseCase.query(sourceType, teamCode, from, to);
+    }
+
+    @Tool(
+            name = "log_context_by_level",
+            description = "특정 레벨의 첫 매칭 로그 이전 N줄 컨텍스트를 포함해 반환합니다. context 기본 50, 최대 500."
+    )
+    public List<LogLineDto> logContextByLevel(
+            @ToolParam(description = "BACKEND | FRONTEND | RDS") String sourceType,
+            @ToolParam(description = "팀 코드") String teamCode,
+            @ToolParam(description = "로그 레벨 (예: ERROR, WARN, INFO)") String level,
+            @ToolParam(description = "이전 컨텍스트 줄 수 (옵션, 기본 50)") String context
+    ) {
+        return logContextByLevelUseCase.query(sourceType, teamCode, level, context);
     }
 }
