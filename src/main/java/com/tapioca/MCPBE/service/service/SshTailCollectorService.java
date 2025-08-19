@@ -10,7 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.schmizz.sshj.SSHClient;
 import net.schmizz.sshj.common.IOUtils;
 import net.schmizz.sshj.connection.channel.direct.Session;
-import net.schmizz.sshj.transport.verification.PromiscuousVerifier; // TODO: 운영은 KnownHosts 권장
+import net.schmizz.sshj.transport.verification.PromiscuousVerifier;
 import net.schmizz.sshj.userauth.keyprovider.KeyProvider;
 import org.springframework.stereotype.Service;
 
@@ -70,7 +70,7 @@ public class SshTailCollectorService implements LogCollectorUseCase {
         while (!Thread.currentThread().isInterrupted()) {
             Path tmp = null;
             try (SSHClient ssh = new SSHClient()) {
-                ssh.addHostKeyVerifier(new PromiscuousVerifier()); // TODO: 운영은 KnownHosts로 교체
+                ssh.addHostKeyVerifier(new PromiscuousVerifier());
                 ssh.connect(host, 22);
 
                 // PEM 문자열을 임시 파일로 저장 후 로드 (버전 호환성 최고)
